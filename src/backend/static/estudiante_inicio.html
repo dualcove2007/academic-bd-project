@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel - INICIO</title>
+    <!-- Fuente limpia y pesada para replicar el texto de la imagen -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        /* Estilos Base e igualación de fuentes pesadas */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* El fondo verde menta cubre todo el fondo derecho */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 50px;
+            letter-spacing: -0.3px;
+        }
+
+        /* Menú de Navegación */
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Elemento Activo "INICIO" */
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde brillante exacto */
+        }
+
+        /* Botón Cerrar Sesión */
+        .btn-cerrar-sesion {
+            background-color: #008000; /* Verde oscuro */
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+        }
+
+        /* Contenedor Derecho Principal */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Superior Blanco */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 24px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-alumno {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .rol-estudiante {
+            font-size: 13px;
+            font-weight: 800;
+            color: #2EFE65; /* Texto "ESTUDIANTE" en verde */
+        }
+
+        .avatar-alumno {
+            width: 50px;
+            height: 50px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+        }
+
+        /* Área de Contenido Verde Menta */
+        .content-body {
+            padding: 40px 35px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        /* Banner Principal de Bienvenida */
+        .welcome-banner {
+            background-color: #4AFE6C; /* Mismo verde brillante */
+            border-radius: 15px;
+            padding: 40px 35px;
+            margin-bottom: 40px;
+            color: #000000;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .welcome-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0 0 25px 0;
+        }
+
+        .welcome-subtitle {
+            font-size: 15px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        /* Flexbox alineado horizontalmente para los 3 bloques */
+        .cards-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 25px;
+        }
+
+        /* Bloques Blancos de Datos */
+        .data-card {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            padding: 20px 25px;
+            flex: 1;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.06);
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 17px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .card-icon {
+            font-size: 22px;
+        }
+
+        .card-main-value {
+            font-size: 38px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin: 15px 0;
+            letter-spacing: -0.5px;
+        }
+
+        /* Variación de tamaño para el texto largo del último bloque */
+        .text-large {
+            font-size: 25px !important;
+            margin: 22px 0 !important;
+        }
+
+        .card-footer {
+            font-size: 13px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra Lateral Izquierda -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item active" onclick="window.location='estudiante_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location='estudiante_horario.html'">&bull; MI HORARIO</div>
+                <div class="menu-item" onclick="window.location='estudiante_notas.html'">&bull; MIS NOTAS</div>
+                <div class="menu-item" onclick="window.location='estudiante_boletines.html'">&bull; MIS BOLETINES</div>
+                <div class="menu-item" onclick="window.location='estudiante_asistencia.html'">&bull; ASISTENCIA ACADEMICA</div>
+                <div class="menu-item" onclick="window.location='estudiante_observador.html'">&bull; OBSERVADOR</div>
+            </div>
+        </div>
+
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <!-- Contenedor Derecho Completo -->
+    <div class="main-container">
+        
+        <!-- Header Superior -->
+        <div class="header-top">
+            <div class="titulo-vista">INICIO</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-alumno">[NOMBRE DEL ALUMNO]</div>
+                    <div class="rol-estudiante">"ESTUDIANTE"</div>
+                </div>
+                <div class="avatar-alumno"></div>
+            </div>
+        </div>
+
+        <!-- Cuerpo de Contenido -->
+        <div class="content-body">
+            
+            <!-- Banner Verde de Bienvenida -->
+            <div class="welcome-banner">
+                <h1 class="welcome-title">"¡Hola, [Nombre del alumno]!"</h1>
+                <p class="welcome-subtitle">Matrícula Activa - Periodo ___ | Grado ___ &nbsp;&nbsp;(Sede _________)</p>
+            </div>
+
+            <!-- Fila de Bloques Informativos -->
+            <div class="cards-row">
+                
+                <!-- Bloque 1: Promedio -->
+                <div class="data-card">
+                    <div class="card-header">
+                        <span class="card-icon">🏆</span>
+                        <span>Promedio General</span>
+                    </div>
+                    <div class="card-main-value">N.N</div>
+                    <div class="card-footer">Desempeño _________</div>
+                </div>
+
+                <!-- Bloque 2: Inasistencias -->
+                <div class="data-card">
+                    <div class="card-header">
+                        <span class="card-icon">👩‍💼</span>
+                        <span>Inasistencias Totales</span>
+                    </div>
+                    <div class="card-main-value">N Fallas</div>
+                    <div class="card-footer">N justificadas, N sin excusa</div>
+                </div>
+
+                <!-- Bloque 3: Comunicado -->
+                <div class="data-card">
+                    <div class="card-header">
+                        <span class="card-icon">🔔</span>
+                        <span>Último Comunicado</span>
+                    </div>
+                    <div class="card-main-value text-large">Reunión General</div>
+                    <div class="card-footer">Publicado: Hace N horas</div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = '/';
+
+    const user = getUser();
+    if (user) {
+        document.querySelector('.nombre-alumno').textContent = user.nombre || '[NOMBRE DEL ALUMNO]';
+        document.querySelector('.welcome-title').textContent = user.nombre
+            ? `"¡Hola, ${user.nombre}!"`
+            : '"¡Hola, [Nombre del alumno]!"';
+    }
+
+    async function loadInicio() {
+        try {
+            const matricula = await apiGet('/estudiantes/mi-matricula');
+            if (matricula) {
+                const subtitle = document.querySelector('.welcome-subtitle');
+                const periodo = matricula.periodo || '___';
+                const grado = matricula.grado || '___';
+                const sede = matricula.sede || '_________';
+                subtitle.textContent = `Matrícula Activa - Periodo ${periodo} | Grado ${grado}  (Sede ${sede})`;
+            }
+        } catch (e) { console.error('Error cargando matricula:', e); }
+
+        try {
+            const notas = await apiGet('/estudiantes/notas');
+            if (notas && notas.length > 0) {
+                const materias = notas.filter(n => n.promedio != null);
+                if (materias.length > 0) {
+                    const prom = materias.reduce((s, m) => s + Number(m.promedio), 0) / materias.length;
+                    document.querySelectorAll('.card-main-value')[0].textContent = prom.toFixed(1);
+                }
+            }
+        } catch (e) { console.error('Error cargando notas:', e); }
+
+        try {
+            const asistencias = await apiGet('/estudiantes/asistencia');
+            if (asistencias && asistencias.length > 0) {
+                const sinJust = asistencias.filter(a => a.estado === 'sin_justificar' || a.estado === 'SIN JUSTIFICAR').length;
+                const just = asistencias.filter(a => a.estado === 'justificada' || a.estado === 'JUSTIFICADA').length;
+                document.querySelectorAll('.card-main-value')[1].textContent = (sinJust + just) + ' Fallas';
+                document.querySelectorAll('.card-footer')[1].textContent = `${just} justificadas, ${sinJust} sin excusa`;
+            }
+        } catch (e) { console.error('Error cargando asistencia:', e); }
+    }
+
+    loadInicio();
+</script>
+</body>
+</html>
