@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel - MI HORARIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        /* Estilos Base del Sistema */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* Fondo verde menta de la plataforma */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+            padding: 14px 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde neón activo */
+        }
+
+        .btn-cerrar-sesion {
+            background-color: #008000; /* Verde oscuro del botón */
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px; /* Botón bien ovalado estilo píldora */
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal Derecho */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera Superior */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 24px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-alumno {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .rol-estudiante {
+            font-size: 13px;
+            font-weight: 800;
+            color: #2EFE65;
+        }
+
+        .avatar-alumno {
+            width: 50px;
+            height: 50px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+        }
+
+        /* Zona de Contenido de la Tabla */
+        .content-body {
+            padding: 30px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Contenedor Blanco de la Tabla */
+        .table-card-wrapper {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            padding: 30px 25px;
+            width: 100%;
+            max-width: 1150px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+        }
+
+        /* Estructura de la Tabla Estilo Nativo */
+        .timetable-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        /* Líneas divisorias finas grises entre celdas */
+        .timetable-table th, .timetable-table td {
+            border: 1px solid #E0E0E0;
+            padding: 12px 10px;
+            vertical-align: middle;
+            text-align: center;
+            position: relative;
+        }
+
+        /* Columna de las horas es un poco más ancha */
+        .timetable-table th:first-child, .timetable-table td:first-child {
+            width: 18%;
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        /* Encabezado completo con fondo azul/celeste pastel claro */
+        .timetable-table thead tr {
+            background-color: #D5FFF2;
+        }
+
+        .timetable-table th {
+            font-size: 20px;
+            font-weight: 800;
+            color: #000000;
+            padding: 15px 10px;
+            border: 1px solid #E0E0E0;
+        }
+
+        /* Celda de hora del receso con salto de línea */
+        .receso-cell {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            line-height: 1.4;
+        }
+
+        /* Tarjetas de Materia */
+        .subject-card {
+            background-color: #A3FBB7; /* Verde menta de los bloques */
+            border-radius: 10px;
+            padding: 14px 5px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12); /* Sombra marcada hacia abajo */
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .subject-card span {
+            display: block;
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        /* Tarjeta Roja de Alerta */
+        .subject-card.danger {
+            background-color: #FFA3A3;
+        }
+
+        /* Botón Circular Rojo con la X Blanca */
+        .close-badge {
+            position: absolute;
+            bottom: -6px;
+            right: -6px;
+            background-color: #FF0000;
+            color: #FFFFFF;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='estudiante_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item active" onclick="window.location='estudiante_horario.html'">&bull; MI HORARIO</div>
+                <div class="menu-item" onclick="window.location='estudiante_notas.html'">&bull; MIS NOTAS</div>
+                <div class="menu-item" onclick="window.location='estudiante_boletines.html'">&bull; MIS BOLETINES</div>
+                <div class="menu-item" onclick="window.location='estudiante_asistencia.html'">&bull; ASISTENCIA ACADEMICA</div>
+                <div class="menu-item" onclick="window.location='estudiante_observador.html'">&bull; OBSERVADOR</div>
+            </div>
+        </div>
+
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="header-top">
+            <div class="titulo-vista">MI HORARIO</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-alumno">[NOMBRE DEL ALUMNO]</div>
+                    <div class="rol-estudiante">"ESTUDIANTE"</div>
+                </div>
+                <div class="avatar-alumno"></div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="table-card-wrapper">
+                
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th>HORA</th>
+                            <th>LUNES</th>
+                            <th>MARTES</th>
+                            <th>MIERCOLES</th>
+                            <th>JUEVES</th>
+                            <th>VIERNES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>7:00AM-7:55AM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td>
+                                <div class="subject-card danger">
+                                    <span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span>
+                                    <div class="close-badge">X</div>
+                                </div>
+                            </td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+                        
+                        <tr>
+                            <td>7:55AM-8:50AM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+
+                        <tr>
+                            <td>8:50AM-9:45AM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+
+                        <tr>
+                            <td class="receso-cell">9:45AM-10:15AM<br>RECESO</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+
+                        <tr>
+                            <td>10:15AM-11:10AM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td>
+                                <div class="subject-card danger">
+                                    <span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span>
+                                    <div class="close-badge">X</div>
+                                </div>
+                            </td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+
+                        <tr>
+                            <td>11:10AM-12:05PM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+
+                        <tr>
+                            <td>12:05PM-1:00PM</td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                            <td><div class="subject-card"><span>[MATERIA]</span><span>[DOCENTE]</span><span>[SALON]</span></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = '/';
+
+    const user = getUser();
+    if (user) {
+        document.querySelector('.nombre-alumno').textContent = user.nombre || '[NOMBRE DEL ALUMNO]';
+    }
+
+    const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+
+    async function loadHorario() {
+        try {
+            const data = await apiGet('/estudiantes/horario');
+            if (!data || data.length === 0) return;
+
+            const tbody = document.querySelector('.timetable-table tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            data.forEach(fila => {
+                const tr = document.createElement('tr');
+
+                const tdHora = document.createElement('td');
+                tdHora.textContent = fila.hora || '';
+                tr.appendChild(tdHora);
+
+                for (let d = 0; d < 5; d++) {
+                    const td = document.createElement('td');
+                    const slot = fila[diasSemana[d]];
+                    if (slot && slot.materia) {
+                        const card = document.createElement('div');
+                        card.className = 'subject-card' + (slot.estado === 'cancelada' ? ' danger' : '');
+                        const sp1 = document.createElement('span'); sp1.textContent = slot.materia;
+                        const sp2 = document.createElement('span'); sp2.textContent = slot.docente || '';
+                        const sp3 = document.createElement('span'); sp3.textContent = slot.salon || '';
+                        card.appendChild(sp1); card.appendChild(sp2); card.appendChild(sp3);
+                        if (slot.estado === 'cancelada') {
+                            const badge = document.createElement('div'); badge.className = 'close-badge'; badge.textContent = 'X';
+                            card.appendChild(badge);
+                        }
+                        td.appendChild(card);
+                    }
+                    tr.appendChild(td);
+                }
+
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error('Error cargando horario:', e); }
+    }
+
+    loadHorario();
+</script>
+</body>
+</html>
