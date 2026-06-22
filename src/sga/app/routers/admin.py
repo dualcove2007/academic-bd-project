@@ -364,11 +364,16 @@ async def listar_carga(db: AsyncSession = Depends(get_db), _=only_admin):
         )
         schedules = sched_result.scalars().all()
         horario_str = ""
+        salon_str = ""
         if schedules:
             horario_str = f"{schedules[0].start_time.strftime('%H:%M')} - {schedules[0].end_time.strftime('%H:%M')}"
             rev_map = {"Monday":"Lunes","Tuesday":"Martes","Wednesday":"Miércoles","Thursday":"Jueves","Friday":"Viernes"}
             dias_str = ", ".join(rev_map.get(s.day_of_week, s.day_of_week) for s in schedules)
             horario_str = f"{dias_str} | {horario_str}"
+            if schedules[0].classroom_id:
+                cr = await db.execute(select(Classroom).where(Classroom.classroom_id == schedules[0].classroom_id))
+                classroom = cr.scalar_one_or_none()
+                salon_str = classroom.name if classroom else ""
         output.append({
             "id": l.academic_load_id,
             "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
@@ -377,6 +382,7 @@ async def listar_carga(db: AsyncSession = Depends(get_db), _=only_admin):
             "materia_nombre": subject.name if subject else "N/A",
             "horario": horario_str,
             "curso": course.name if course else "N/A",
+            "salon": salon_str,
         })
     return output
 
@@ -538,8 +544,13 @@ async def eliminar_curso(course_id: int, db: AsyncSession = Depends(get_db), _=o
         raise HTTPException(status_code=404, detail="Curso no encontrado")
     await db.delete(course)
 
+@router.get("/salones")
+async def listar_salones(db: AsyncSession = Depends(get_db), _=only_admin):
+    result = await db.execute(select(Classroom).where(Classroom.status == "active"))
+    classrooms = result.scalars().all()
+    return [{"classroom_id": c.classroom_id, "nombre": c.name, "capacidad": c.capacity, "ubicacion": c.location or ""} for c in classrooms]
 @router.get("/periodos")
-async def listar_periodos(db: AsyncSession = Depends(get_db), _=only_admin):
+async def listar_periodos(db: AsyncSession = Depends(get_db), _=Depends(require_rol("docente", "admin"))):
     result = await db.execute(select(AcademicPeriod))
     return result.scalars().all()
 

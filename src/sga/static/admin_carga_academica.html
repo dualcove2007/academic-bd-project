@@ -256,10 +256,11 @@
         }
 
         /* Distribución de columnas aproximada */
-        .carga-table th:nth-child(1) { width: 28%; }
+        .carga-table th:nth-child(1) { width: 22%; }
         .carga-table th:nth-child(2) { width: 24%; }
-        .carga-table th:nth-child(3) { width: 28%; }
-        .carga-table th:nth-child(4) { width: 20%; }
+        .carga-table th:nth-child(3) { width: 24%; }
+        .carga-table th:nth-child(4) { width: 15%; }
+        .carga-table th:nth-child(5) { width: 15%; }
 
         .carga-table td {
             border: 1px solid #CCCCCC;
@@ -350,6 +351,10 @@
                             <option value="">Seleccione Horario</option>
                         </select>
 
+                        <select class="form-select" id="salonSelect">
+                            <option value="">Seleccione Salón</option>
+                        </select>
+
                         <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
                             <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                                 <input type="checkbox" class="dia-check" value="Lunes" checked> Lun
@@ -379,6 +384,7 @@
                                 <th>Docente</th>
                                 <th>Curso / Materia</th>
                                 <th>Horario Asignado</th>
+                                <th>Salón</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -401,6 +407,7 @@
     const cursoSelect = document.getElementById('cursoSelect');
     const materiaSelect = document.getElementById('materiaSelect');
     const horarioSelect = document.getElementById('horarioSelect');
+    const salonSelect = document.getElementById('salonSelect');
     const cargaBody = document.getElementById('cargaBody');
     const cargaForm = document.getElementById('cargaForm');
 
@@ -458,6 +465,19 @@
         } catch (e) { console.error('Error cargando horarios:', e); }
     }
 
+    async function loadSalones() {
+        try {
+            const salones = await apiGet('/admin/salones');
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            salones.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.classroom_id;
+                opt.textContent = s.nombre + (s.ubicacion ? ' (' + s.ubicacion + ')' : '') + ' - Cap: ' + s.capacidad;
+                salonSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando salones:', e); }
+    }
+
     async function loadCarga() {
         try {
             const carga = await apiGet('/admin/carga-academica');
@@ -468,6 +488,7 @@
                     <td>${c.docente_nombre || c.docente || ''}</td>
                     <td>${c.curso || ''} / ${c.materia_nombre || c.materia || ''}</td>
                     <td>${c.horario || ''}</td>
+                    <td>${c.salon || '-'}</td>
                     <td>
                         <button class="btn-delete-action" data-id="${c.id}">
                             <svg viewBox="0 0 24 24">
@@ -508,6 +529,7 @@
             hora_inicio: horarioOpt.dataset.horaInicio,
             hora_fin: horarioOpt.dataset.horaFin,
             dias: diasSel,
+            classroom_id: salonSelect.value || null,
         };
         if (!data.docente_id || !data.curso_id || !data.materia_id || !data.hora_inicio) {
             alert('Seleccione docente, curso, materia y horario');
@@ -517,6 +539,8 @@
             await apiPost('/admin/carga-academica', data);
             loadCarga();
             cargaForm.reset();
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            loadSalones();
         } catch (e) { alert('Error: ' + e.message); }
     });
 
@@ -524,6 +548,7 @@
     loadCursos();
     loadMaterias();
     loadHorarios();
+    loadSalones();
     loadCarga();
 </script>
 </body>

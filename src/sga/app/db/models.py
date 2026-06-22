@@ -303,4 +303,4 @@ class Observador(Base):
     tipo: Mapped[str] = mapped_column(String(20))
     descripcion: Mapped[str] = mapped_column(Text)
     fecha: Mapped[datetime] = mapped_column(DateTime)
-    periodo: Mapped[str] = mapped_column(String(10))
+    periodo: Mapped[str] = mapped_column(String(50))

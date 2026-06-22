@@ -62,8 +62,15 @@ function apiPut(endpoint, body) {
     return apiRequest(endpoint, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function apiPatch(endpoint) {
-    return apiRequest(endpoint, { method: 'PATCH' });
+function apiPatch(endpoint, body) {
+    return apiRequest(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+}
+
+function escapeHtml(str) {
+    if (!str) return str;
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
 }
 
 function apiDelete(endpoint) {

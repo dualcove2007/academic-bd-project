@@ -11,7 +11,6 @@ import os
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.execute(text("ALTER TABLE academic_load DROP CONSTRAINT IF EXISTS uq_academic_load"))
     yield
     await engine.dispose()
 

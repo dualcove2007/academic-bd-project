@@ -402,12 +402,17 @@
                 <div class="observer-form-card">
                     
                     <!-- Selector de tipo de anotación -->
-                    <select class="type-select">
+                    <select class="type-select" id="tipo-select">
                         <option value="">SELECCIONE TIPO...</option>
                         <option value="FELICITACION">FELICITACION</option>
                         <option value="FALTA LEVE">FALTA LEVE</option>
                         <option value="FALTA GRAVE">FALTA GRAVE</option>
                         <option value="COMPROMISO">COMPROMISO</option>
+                    </select>
+
+                    <!-- Selector de periodo -->
+                    <select class="type-select" id="periodo-select" style="margin-top:0;">
+                        <option value="">Periodo académico</option>
                     </select>
 
                     <!-- Campos de texto -->
@@ -492,7 +497,10 @@
     function seleccionarEstudiante(id) {
         selectedEstudianteId = id;
         renderStudentList(document.querySelector('.search-student-input').value);
-        apiGet('/docentes/observador/' + id).then(data => {
+        const periodo = document.getElementById('periodo-select').value;
+        let url = '/docentes/observador/' + id;
+        if (periodo) url += '?periodo=' + encodeURIComponent(periodo);
+        apiGet(url).then(data => {
             const container = document.getElementById('history-container');
             if (!data || data.length === 0) {
                 container.innerHTML = '<div class="note-history-card"><div class="note-description-text">No hay anotaciones para este estudiante</div></div>';
@@ -502,22 +510,26 @@
             data.forEach(obs => {
                 const card = document.createElement('div');
                 card.className = 'note-history-card';
-                card.innerHTML = '<div class="note-header-meta">' + (obs.fecha || '') + ' - ' + (obs.tipo || '') + '. Reportado por ' + (obs.reportado_por || user?.nombre || 'Docente') + '.</div><div class="note-description-text">' + (obs.descripcion || '') + '</div>';
+                card.innerHTML = '<div class="note-header-meta">' + escapeHtml(obs.fecha || '') + ' - ' + escapeHtml(obs.tipo || '') + ' (Periodo: ' + escapeHtml(obs.periodo || 'N/A') + '). Reportado por ' + escapeHtml(obs.reportado_por || user?.nombre || 'Docente') + '.</div><div class="note-description-text">' + escapeHtml(obs.descripcion || '') + '</div>';
                 container.appendChild(card);
             });
         }).catch(() => {});
     }
     function registrarActa() {
         if (!selectedEstudianteId) { alert('Seleccione un estudiante'); return; }
-        const tipo = document.querySelector('.type-select').value;
+        const tipo = document.getElementById('tipo-select').value;
         const descripcion = document.querySelector('.textarea-observation').value;
         const compromiso = document.querySelector('.input-commitment').value;
+        const periodo = document.getElementById('periodo-select').value;
         if (!descripcion) { alert('Describa la situación observada'); return; }
+        if (!tipo) { alert('Seleccione un tipo de anotación'); return; }
+        let descripcionCompleta = descripcion;
+        if (compromiso) descripcionCompleta += ' | COMPROMISOS: ' + compromiso;
         apiPost('/docentes/observador', {
             estudiante_id: selectedEstudianteId,
             tipo: tipo,
-            descripcion: descripcion,
-            compromiso: compromiso
+            descripcion: descripcionCompleta,
+            periodo: periodo
         }).then(() => {
             alert('Anotación registrada correctamente');
             document.querySelector('.textarea-observation').value = '';
@@ -528,6 +540,20 @@
     document.querySelector('.search-student-input').addEventListener('input', function() {
         renderStudentList(this.value);
     });
+
+    function cargarPeriodos() {
+        apiGet('/admin/periodos').then(data => {
+            const select = document.getElementById('periodo-select');
+            (data || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                opt.textContent = p.name + ' (' + p.academic_year + ')';
+                select.appendChild(opt);
+            });
+        }).catch(() => {});
+    }
+
+    cargarPeriodos();
     cargarEstudiantes();
 </script>
 </body>
