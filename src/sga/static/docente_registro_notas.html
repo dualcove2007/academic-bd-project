@@ -378,37 +378,19 @@
                     <table class="grades-table">
                         <thead>
                             <tr>
-                                <th>Nombre</th>
-                                <th>Actividad 1</th>
-                                <th>Actividad 2</th>
-                                <th>Actividad 3</th>
-                                <th>Def. Acumulada</th>
+                                <th style="width:40%">Nombre</th>
+                                <th style="width:30%">Nota</th>
+                                <th style="width:30%">Def. Acumulada</th>
                             </tr>
                         </thead>
                         <tbody>
-                            
-                            <tr>
-                                <td class="student-name-cell">[Nombre del alumno]</td>
-                                <td><div class="grade-oval-badge">N.N</div></td>
-                                <td><div class="grade-oval-badge">N.N</div></td>
-                                <td><div class="grade-oval-badge">N.N</div></td>
-                                <td><div class="final-oval-badge approved">N.N</div></td>
-                            </tr>
-
-                            <tr>
-                                <td class="student-name-cell">[Nombre del alumno]</td>
-                                <td><div class="grade-oval-badge">N.N</div></td>
-                                <td><span class="grade-empty-text">---</span></td>
-                                <td><div class="grade-oval-badge">N.N</div></td>
-                                <td><div class="final-oval-badge failed">N.N</div></td>
-                            </tr>
-
+                            <tr><td class="student-name-cell" colspan="3">Seleccione una materia y actividad</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="summary-group-footer">
-                    Rendimiento General del Grupo: Promedio acumulado de la sección ---- es de N.N | N Estudiantes con notas pendientes.
+                <div class="summary-group-footer" id="summary-footer">
+                    Rendimiento General del Grupo: Seleccione una actividad para ver estadísticas.
                 </div>
 
             </div>
@@ -421,12 +403,20 @@
     if (user) {
         document.querySelector('.nombre-docente').textContent = user.nombre || user.email;
     }
+    let cargasMap = {};
+    let currentCargaId = null;
     let currentActividadId = null;
-    function loadActividades(materiaId) {
+    let allStudents = [];
+
+    function loadActividades(cargaId) {
+        currentCargaId = cargaId;
+        currentActividadId = null;
         const actSelect = document.querySelector('.actividades-dropdown');
         actSelect.innerHTML = '<option value="">Seleccione actividad...</option>';
-        if (!materiaId) return;
-        apiGet('/docentes/actividades/' + materiaId).then(data => {
+        document.querySelector('.grades-table tbody').innerHTML = '<tr><td colspan="3">Seleccione una actividad</td></tr>';
+        document.getElementById('summary-footer').textContent = 'Rendimiento General del Grupo: Seleccione una actividad para ver estadísticas.';
+        if (!cargaId) return;
+        apiGet('/docentes/actividades/' + cargaId).then(data => {
             (data || []).forEach(act => {
                 const opt = document.createElement('option');
                 opt.value = act.id;
@@ -435,26 +425,53 @@
             });
         }).catch(() => {});
     }
+
     function loadNotas(actividadId) {
         currentActividadId = actividadId;
         const tbody = document.querySelector('.grades-table tbody');
-        if (!actividadId) { tbody.innerHTML = '<tr><td colspan="5">Seleccione una actividad</td></tr>'; return; }
-        apiGet('/docentes/notas/' + actividadId).then(data => {
-            if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Sin notas registradas</td></tr>'; return; }
+        if (!actividadId) { tbody.innerHTML = '<tr><td colspan="3">Seleccione una actividad</td></tr>'; return; }
+        if (!currentCargaId) { tbody.innerHTML = '<tr><td colspan="3">Seleccione una materia primero</td></tr>'; return; }
+
+        Promise.all([
+            apiGet('/docentes/mi-carga/' + currentCargaId + '/estudiantes'),
+            apiGet('/docentes/notas/' + actividadId)
+        ]).then(([estudiantes, notas]) => {
+            allStudents = estudiantes || [];
+            const notasMap = {};
+            (notas || []).forEach(n => { notasMap[n.estudiante_id] = n; });
+
+            if (allStudents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">No hay estudiantes matriculados en esta materia</td></tr>';
+                document.getElementById('summary-footer').textContent = 'Rendimiento General del Grupo: Sin estudiantes.';
+                return;
+            }
+
             tbody.innerHTML = '';
-            let suma = 0, count = 0;
-            data.forEach(nota => {
-                const val = nota.valor != null ? nota.valor : '';
-                suma += parseFloat(val) || 0;
-                if (val !== '') count++;
+            let suma = 0, count = 0, pendientes = 0;
+            allStudents.forEach(est => {
+                const nota = notasMap[est.estudiante_id];
+                const val = nota ? nota.valor : '';
+                if (val !== '' && val != null) {
+                    suma += parseFloat(val) || 0;
+                    count++;
+                } else {
+                    pendientes++;
+                }
+                const definitiva = nota ? (nota.definitiva != null ? nota.definitiva : val) : '';
+                const defClass = definitiva !== '' ? (parseFloat(definitiva) >= 3 ? 'approved' : 'failed') : '';
+
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td class="student-name-cell">' + (nota.estudiante_nombre || '') + '</td><td><input type="number" class="grade-oval-badge grade-input" value="' + val + '" data-nota-id="' + (nota.id || '') + '" data-estudiante-id="' + (nota.estudiante_id || '') + '" step="0.1" min="0" max="5" style="width:70px;text-align:center;border:1px solid #ccc;border-radius:20px;padding:6px 12px;font-weight:800;"></td><td></td><td></td><td><div class="final-oval-badge ' + ((nota.definitiva || 0) >= 3 ? 'approved' : 'failed') + '">' + (nota.definitiva != null ? nota.definitiva.toFixed(1) : 'N.N') + '</div></td>';
+                tr.innerHTML = '<td class="student-name-cell">' + escapeHtml(est.estudiante_nombre || '') + '</td>' +
+                    '<td><input type="number" class="grade-input" value="' + val + '" data-estudiante-id="' + est.estudiante_id + '" step="0.1" min="0" max="5" style="width:85px;text-align:center;border:1px solid #ccc;border-radius:20px;padding:8px 12px;font-weight:800;font-family:Open Sans,sans-serif;font-size:16px;"></td>' +
+                    '<td><div class="final-oval-badge ' + defClass + '">' + (definitiva !== '' ? parseFloat(definitiva).toFixed(1) : 'N.N') + '</div></td>';
                 tbody.appendChild(tr);
             });
+
             const prom = count > 0 ? (suma / count).toFixed(1) : 'N.N';
-            document.querySelector('.summary-group-footer').textContent = 'Rendimiento General del Grupo: Promedio de la actividad es ' + prom + ' | ' + count + ' estudiantes con notas.';
-        }).catch(() => { tbody.innerHTML = '<tr><td colspan="5">Error al cargar notas</td></tr>'; });
+            document.getElementById('summary-footer').textContent = 'Rendimiento General del Grupo: Promedio de la actividad es ' + prom + ' | ' + count + ' estudiantes con nota | ' + pendientes + ' pendientes.';
+        }).catch(() => { tbody.innerHTML = '<tr><td colspan="3">Error al cargar datos</td></tr>'; });
     }
+
     document.querySelector('.materia-dropdown').addEventListener('change', function() {
         loadActividades(this.value);
     });
@@ -465,13 +482,34 @@
         if (!currentActividadId) { alert('Seleccione una actividad'); return; }
         const inputs = document.querySelectorAll('.grade-input');
         const notas = [];
+        let tieneDatos = false;
         inputs.forEach(inp => {
-            const val = inp.value;
+            const val = inp.value.trim();
             if (val !== '') {
-                notas.push({ estudiante_id: parseInt(inp.dataset.estudianteId), valor: parseFloat(val), actividad_id: parseInt(currentActividadId) });
+                const num = parseFloat(val);
+                if (isNaN(num)) {
+                    inp.style.border = '2px solid red';
+                    return;
+                }
+                tieneDatos = true;
+                notas.push({
+                    estudiante_id: parseInt(inp.dataset.estudianteId),
+                    valor: num,
+                    actividad_id: parseInt(currentActividadId)
+                });
+            } else {
+                notas.push({
+                    estudiante_id: parseInt(inp.dataset.estudianteId),
+                    valor: null,
+                    actividad_id: parseInt(currentActividadId)
+                });
             }
         });
-        if (notas.length === 0) { alert('No hay notas para guardar'); return; }
+        const invalidos = document.querySelectorAll('.grade-input[style*="red"]');
+        if (invalidos.length > 0) { alert('Hay ' + invalidos.length + ' nota(s) con formato inválido (marcadas en rojo). Corríjalas antes de guardar.'); return; }
+        if (!tieneDatos && notas.every(n => n.valor === null)) {
+            if (!confirm('Todos los campos están vacíos. ¿Desea guardar (esto borrará las notas existentes)?')) return;
+        }
         apiPost('/docentes/notas', notas).then(() => {
             alert('Notas guardadas correctamente');
             loadNotas(currentActividadId);
@@ -480,7 +518,11 @@
     apiGet('/docentes/mi-carga').then(data => {
         const select = document.querySelector('.materia-dropdown');
         select.innerHTML = '<option value="">Seleccione materia...</option>';
+        const seen = new Set();
         (data || []).forEach(item => {
+            if (seen.has(item.materia_id)) return;
+            seen.add(item.materia_id);
+            cargasMap[item.materia_id] = item;
             const opt = document.createElement('option');
             opt.value = item.materia_id;
             opt.textContent = (item.materia_nombre || '') + ' - ' + (item.grado || '');

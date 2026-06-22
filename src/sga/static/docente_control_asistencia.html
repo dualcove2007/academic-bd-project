@@ -430,55 +430,72 @@
     }
     document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-CO');
     let currentCargaId = null;
+
     function loadAsistencia(cargaId) {
         currentCargaId = cargaId;
         const tbody = document.getElementById('asistencia-tbody');
         if (!cargaId) { tbody.innerHTML = '<tr><td colspan="3">Seleccione una materia</td></tr>'; return; }
-        apiGet('/docentes/asistencia/' + cargaId).then(data => {
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3">No hay registros de asistencia para esta materia. Seleccione materia con estudiantes.</td></tr>';
+
+        Promise.all([
+            apiGet('/docentes/mi-carga/' + cargaId + '/estudiantes'),
+            apiGet('/docentes/asistencia/' + cargaId)
+        ]).then(([estudiantes, asistenciaData]) => {
+            const attMap = {};
+            (asistenciaData || []).forEach(a => { attMap[a.estudiante_id] = a; });
+
+            if (!estudiantes || estudiantes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">No hay estudiantes matriculados en esta materia</td></tr>';
+                document.getElementById('resumen-asistencia').textContent = 'Sin estudiantes.';
                 return;
             }
-            let presentes = 0, ausentes = 0, tardes = 0, excusados = 0;
+
+            let presentes = 0, ausentes = 0, tardes = 0, excusados = 0, sinRegistro = 0;
             tbody.innerHTML = '';
-            data.forEach((item, idx) => {
-                const estado = item.estado || '';
+            estudiantes.forEach(est => {
+                const att = attMap[est.estudiante_id];
+                const estado = att ? att.estado : '';
+                const observacion = att ? att.observacion : '';
                 if (estado === 'presente') presentes++;
                 else if (estado === 'ausente') ausentes++;
                 else if (estado === 'tarde') tardes++;
                 else if (estado === 'excusado') excusados++;
-                const name = 'asistencia_' + cargaId + '_' + item.estudiante_id;
+                else sinRegistro++;
+
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td class="student-name">' + (item.estudiante_nombre || '') + '</td>' +
+                tr.innerHTML = '<td class="student-name">' + escapeHtml(est.estudiante_nombre || '') + '</td>' +
                     '<td><div class="attendance-options-group">' +
                         ['presente','ausente','tarde','excusado'].map(e => {
                             const checked = estado === e ? ' checked' : '';
-                            return '<label class="option-label"><span class="option-text">' + e.toUpperCase() + '</span><input type="radio" name="' + name + '" value="' + e + '"' + checked + '></label>';
+                            return '<label class="option-label"><span class="option-text">' + e.toUpperCase() + '</span><input type="radio" name="att_' + est.estudiante_id + '" value="' + e + '"' + checked + ' data-estudiante-id="' + est.estudiante_id + '"></label>';
                         }).join('') +
                     '</div></td>' +
-                    '<td><input type="text" class="comment-text" value="' + (item.observacion || '') + '" placeholder="Observación..." style="width:90%;padding:6px;border:1px solid #ccc;border-radius:8px;font-weight:800;font-family:Open Sans,sans-serif;"></td>';
+                    '<td><input type="text" class="comment-text" value="' + (observacion || '') + '" placeholder="Observación..." style="width:90%;padding:6px;border:1px solid #ccc;border-radius:8px;font-weight:800;font-family:Open Sans,sans-serif;"></td>';
                 tbody.appendChild(tr);
             });
-            document.getElementById('resumen-asistencia').textContent = 'Resumen del Grupo hoy: Presentes: ' + presentes + ' | Ausentes: ' + ausentes + ' | Tardes: ' + tardes + ' | Excusados: ' + excusados;
+
+            document.getElementById('resumen-asistencia').textContent =
+                'Resumen del Grupo hoy: Presentes: ' + presentes +
+                ' | Ausentes: ' + ausentes +
+                ' | Tardes: ' + tardes +
+                ' | Excusados: ' + excusados +
+                ' | Sin registro: ' + sinRegistro;
         }).catch(() => {
             tbody.innerHTML = '<tr><td colspan="3">Error al cargar asistencia</td></tr>';
         });
     }
+
     function guardarAsistencia() {
         if (!currentCargaId) { alert('Seleccione una materia'); return; }
         const tbody = document.getElementById('asistencia-tbody');
         const rows = tbody.querySelectorAll('tr');
         const records = [];
         rows.forEach(row => {
-            const nombre = row.querySelector('.student-name');
-            if (!nombre) return;
             const radio = row.querySelector('input[type="radio"]:checked');
             const obs = row.querySelector('.comment-text');
-            const estudianteId = radio ? radio.name.split('_').pop() : null;
-            if (estudianteId && radio) {
+            if (radio) {
                 records.push({
                     carga_id: parseInt(currentCargaId),
-                    estudiante_id: parseInt(estudianteId),
+                    estudiante_id: parseInt(radio.dataset.estudianteId),
                     estado: radio.value,
                     observacion: obs ? obs.value : ''
                 });
@@ -490,10 +507,14 @@
             loadAsistencia(currentCargaId);
         }).catch(e => alert('Error: ' + e.message));
     }
+
     apiGet('/docentes/mi-carga').then(data => {
         const select = document.querySelector('.materia-select');
         select.innerHTML = '<option value="">Seleccione materia...</option>';
+        const seen = new Set();
         (data || []).forEach(item => {
+            if (seen.has(item.id)) return;
+            seen.add(item.id);
             const opt = document.createElement('option');
             opt.value = item.id;
             opt.textContent = (item.materia_nombre || '') + ' - ' + (item.grado || '');

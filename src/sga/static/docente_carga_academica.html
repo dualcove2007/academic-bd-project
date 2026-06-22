@@ -390,35 +390,90 @@
     if (user) {
         document.querySelector('.nombre-docente').textContent = user.nombre || user.email;
     }
-    const days = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'];
+
+    function formatTime(t) {
+        if (!t) return '';
+        const parts = t.split(':');
+        const h = parseInt(parts[0]), m = parts[1];
+        if (isNaN(h)) return t;
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return h12 + ':' + m + ' ' + ampm;
+    }
+
+    function timeToMinutes(t) {
+        if (!t) return 0;
+        const parts = t.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+
+    const dayNames = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'];
     const dayMap = {1:0,2:1,3:2,4:3,5:4};
-    const timeSlots = ['7:00AM-7:55AM','7:55AM-8:50AM','8:50AM-9:45AM','10:15AM-11:10AM','11:10AM-12:05AM','12:05AM-1:00PM'];
     const tbody = document.querySelector('.schedule-table tbody');
+
     apiGet('/docentes/mi-carga').then(data => {
-        let grid = Array.from({length:6},()=>Array(5).fill(null));
-        if (data) data.forEach(item => {
-            const b = item.bloque - 1;
-            const d = dayMap[item.dia_semana];
-            if (b >= 0 && b < 6 && d !== undefined) grid[b][d] = item;
-        });
-        let html = '';
-        for (let i = 0; i < 6; i++) {
-            if (i === 3) {
-                html += '<tr class="receso-row"><td class="receso-text" colspan="6">9:45AM-10:15AM<br>RECESO</td></tr>';
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">No hay carga académica registrada</td></tr>';
+            return;
+        }
+
+        const timeSet = new Map();
+        const slots = [];
+        data.forEach(item => {
+            if (item.hora_inicio && item.hora_fin) {
+                const key = item.hora_inicio;
+                if (!timeSet.has(key)) {
+                    const slot = { inicio: item.hora_inicio, fin: item.hora_fin };
+                    timeSet.set(key, slot);
+                    slots.push(slot);
+                }
             }
-            html += '<tr><td class="time-cell">' + timeSlots[i] + '</td>';
+        });
+        slots.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+        if (slots.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">No hay horarios registrados</td></tr>';
+            return;
+        }
+
+        const rowIndex = {};
+        slots.forEach((s, i) => { rowIndex[s.inicio] = i; });
+
+        const numRows = slots.length;
+        const grid = Array.from({length: numRows}, () => Array(5).fill(null));
+        data.forEach(item => {
+            const r = rowIndex[item.hora_inicio];
+            const c = dayMap[item.dia_semana];
+            if (r !== undefined && c !== undefined) {
+                grid[r][c] = item;
+            }
+        });
+
+        let html = '';
+        for (let i = 0; i < numRows; i++) {
+            const slot = slots[i];
+            html += '<tr><td class="time-cell">' + formatTime(slot.inicio) + ' - ' + formatTime(slot.fin) + '</td>';
             for (let j = 0; j < 5; j++) {
                 const item = grid[i][j];
                 if (item) {
-                    html += '<td><div class="class-card"><span class="class-title">Grado: ' + (item.grado || '') + '</span><span>' + (item.materia_nombre || '') + '</span><span>Salón ' + (item.salon || '') + ' - Bloque ' + (i+1) + '</span><span>' + (item.nh_semanales || '0') + 'h semanales</span></div></td>';
+                    html += '<td><div class="class-card"><span class="class-title">Grado: ' + escapeHtml(item.grado || '') + '</span><span>' + escapeHtml(item.materia_nombre || '') + '</span><span>Salón ' + escapeHtml(item.salon || '') + '</span><span>' + escapeHtml(item.nh_semanales || '0') + 'h semanales</span></div></td>';
                 } else {
                     html += '<td></td>';
                 }
             }
             html += '</tr>';
+
+            if (i < numRows - 1) {
+                const gapMin = timeToMinutes(slots[i+1].inicio) - timeToMinutes(slots[i].fin);
+                if (gapMin >= 15) {
+                    html += '<tr class="receso-row"><td class="receso-text" colspan="6">' + formatTime(slots[i].fin) + ' - ' + formatTime(slots[i+1].inicio) + '<br>RECESO</td></tr>';
+                }
+            }
         }
         tbody.innerHTML = html;
-    }).catch(() => {});
+    }).catch(() => {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Error al cargar el horario</td></tr>';
+    });
 </script>
 </body>
 </html>

@@ -350,10 +350,38 @@
     }
     apiGet('/docentes/mi-carga').then(data => {
         if (data && data.length) {
+            const hoy = new Date().getDay();
+            const diaMap = {0:1, 1:1, 2:2, 3:3, 4:4, 5:5, 6:1};
+            const diaHoy = diaMap[hoy] || 1;
+            const clasesHoy = data.filter(item => item.dia_semana === diaHoy).length;
+
+            const materiasUnicas = new Set(data.map(item => item.materia_id)).size;
+
+            let totalEstudiantes = 0;
+            const seenIds = new Set();
+            data.forEach(item => {
+                if (item.estudiantes) {
+                    item.estudiantes.forEach(est => {
+                        if (!seenIds.has(est.id)) {
+                            seenIds.add(est.id);
+                            totalEstudiantes++;
+                        }
+                    });
+                }
+            });
+
             const values = document.querySelectorAll('.card-metric-value');
-            if (values[0]) values[0].textContent = data.length + ' Materias';
+            if (values[0]) values[0].textContent = clasesHoy + ' Bloques';
+            if (values[1]) values[1].textContent = materiasUnicas + ' Materias';
+            if (values[2]) values[2].textContent = totalEstudiantes + ' Alumnos';
+
             const footers = document.querySelectorAll('.card-metric-footer');
-            if (footers[0]) footers[0].textContent = 'Carga académica activa';
+            if (footers[0]) footers[0].textContent = clasesHoy > 0 ? 'Clases programadas para hoy' : 'Sin clases hoy';
+            if (footers[1]) footers[1].textContent = 'Carga académica activa';
+            if (footers[2]) footers[2].textContent = 'Estudiantes en todos sus cursos';
+
+            document.querySelector('.welcome-meta').textContent =
+                'Periodo Académico | ' + materiasUnicas + ' materias | ' + totalEstudiantes + ' estudiantes';
         }
     }).catch(() => {});
 </script>
