@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - GESTION DE MATERIAS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Open Sans', sans-serif; margin: 0; background-color: #A3FBB7; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 240px; background-color: #FFFFFF; display: flex; flex-direction: column; align-items: center; padding-top: 20px; padding-bottom: 25px; box-sizing: border-box; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-top { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .avatar-colegio { width: 150px; height: 150px; background-color: #A3FBB7; border-radius: 50%; margin-bottom: 30px; }
+        .nombre-colegio { font-size: 18px; font-weight: 800; color: #000000; margin-bottom: 35px; }
+        .menu-nav { width: 100%; }
+        .menu-item { font-size: 14px; font-weight: 800; color: #000000; padding: 10px 20px; cursor: pointer; transition: background-color 0.2s; }
+        .menu-item:hover { background-color: #C8FFD6; }
+        .menu-item.active { background-color: #C8FFD6; }
+        .btn-cerrar-sesion { background: none; border: 1px solid #000; border-radius: 25px; padding: 12px 25px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Open Sans', sans-serif; }
+        .main-container { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .header-top { background-color: #FFFFFF; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .titulo-vista { font-size: 24px; font-weight: 800; }
+        .usuario-info-block { display: flex; align-items: center; gap: 12px; }
+        .nombre-admin { font-size: 16px; font-weight: 800; }
+        .rol-admin { font-size: 12px; font-weight: 700; color: #555; }
+        .avatar-admin { width: 50px; height: 50px; background-color: #D9D9D9; border-radius: 50%; }
+        .content-body { flex: 1; overflow-y: auto; padding: 20px; }
+        .view-wrapper { max-width: 1000px; margin: 0 auto; }
+        .top-filter-bar { background-color: #FFFFFF; border-radius: 12px; padding: 15px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn-primary { background-color: #4AFE6C; border: none; border-radius: 25px; padding: 12px 25px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Open Sans', sans-serif; }
+        .btn-danger { background-color: #FF6B6B; border: none; border-radius: 25px; padding: 12px 25px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Open Sans', sans-serif; color: #fff; }
+        .btn-secondary { background-color: #E0E0E0; border: none; border-radius: 25px; padding: 12px 25px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: 'Open Sans', sans-serif; }
+        .table-card-wrapper { background-color: #FFFFFF; border-radius: 12px; padding: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 14px; font-weight: 800; padding: 12px 10px; border-bottom: 2px solid #000; }
+        td { padding: 10px; font-size: 14px; border-bottom: 1px solid #ddd; }
+        .badge { display: inline-block; border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 800; }
+        .badge-active { background-color: #4AFE6C; }
+        .badge-inactive { background-color: #D9D9D9; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; font-weight: 800; padding: 4px 8px; }
+        .action-btn.edit { color: #0066CC; }
+        .action-btn.delete { color: #CC0000; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #fff; border-radius: 16px; padding: 30px; width: 420px; max-width: 90%; }
+        .modal h2 { margin-bottom: 20px; font-size: 20px; }
+        .modal label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 4px; margin-top: 12px; }
+        .modal input, .modal textarea, .modal select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-family: 'Open Sans', sans-serif; font-size: 14px; }
+        .modal textarea { resize: vertical; min-height: 60px; }
+        .modal .btn-row { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item active" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_grados.html'">&bull; GRADOS</div>
+                <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
+                <div class="menu-item" onclick="window.location='admin_auditoria.html'">&bull; AUDITORIA</div>
+            </div>
+        </div>
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <div class="main-container">
+        <div class="header-top">
+            <div class="titulo-vista">Gestion de Materias</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-admin">[NOMBRE DEL ADMIN]</div>
+                    <div class="rol-admin">"ADMINISTRATIVO"</div>
+                </div>
+                <div class="avatar-admin"></div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="view-wrapper">
+                <div class="top-filter-bar">
+                    <button class="btn-primary" onclick="abrirModal()">+ Nueva Materia</button>
+                </div>
+
+                <div class="table-card-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Horas Semanales</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materiasBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalMateria">
+        <div class="modal">
+            <h2 id="modalTitle">Nueva Materia</h2>
+            <input type="hidden" id="editId">
+            <label>Nombre</label>
+            <input type="text" id="inputNombre" placeholder="Ej: Matemáticas">
+            <label>Descripción</label>
+            <textarea id="inputDescripcion" placeholder="Descripción opcional"></textarea>
+            <label>Horas Semanales</label>
+            <input type="number" id="inputHoras" value="1" min="1" max="40">
+            <div class="btn-row">
+                <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-primary" onclick="guardarMateria()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) document.querySelector('.nombre-admin').textContent = user.nombre;
+
+    function abrirModal(data) {
+        document.getElementById('modalMateria').classList.add('active');
+        if (data) {
+            document.getElementById('modalTitle').textContent = 'Editar Materia';
+            document.getElementById('editId').value = data.id;
+            document.getElementById('inputNombre').value = data.nombre;
+            document.getElementById('inputDescripcion').value = data.descripcion || '';
+            document.getElementById('inputHoras').value = data.horas || 1;
+        } else {
+            document.getElementById('modalTitle').textContent = 'Nueva Materia';
+            document.getElementById('editId').value = '';
+            document.getElementById('inputNombre').value = '';
+            document.getElementById('inputDescripcion').value = '';
+            document.getElementById('inputHoras').value = '1';
+        }
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalMateria').classList.remove('active');
+    }
+
+    async function guardarMateria() {
+        const id = document.getElementById('editId').value;
+        const nombre = document.getElementById('inputNombre').value.trim();
+        const descripcion = document.getElementById('inputDescripcion').value.trim();
+        const horas = parseInt(document.getElementById('inputHoras').value) || 1;
+        if (!nombre) { alert('El nombre es obligatorio'); return; }
+        try {
+            if (id) {
+                await apiPut(`/admin/materias/${id}`, { nombre, descripcion, weekly_hours: horas });
+            } else {
+                await apiPost('/admin/materias', { nombre, descripcion, weekly_hours: horas });
+            }
+            cerrarModal();
+            cargarMaterias();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function eliminarMateria(id) {
+        if (!confirm('¿Eliminar esta materia?')) return;
+        try {
+            await apiDelete(`/admin/materias/${id}`);
+            cargarMaterias();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function cargarMaterias() {
+        const tbody = document.getElementById('materiasBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;">Cargando...</td></tr>';
+        try {
+            const data = await apiGet('/admin/materias');
+            let html = '';
+            data.forEach(m => {
+                const activa = m.estado !== false;
+                const enc = encodeURIComponent(JSON.stringify({id:m.id,nombre:m.nombre,descripcion:m.descripcion||'',horas:m.horas||1}));
+                html += `<tr>
+                    <td>${m.id}</td>
+                    <td>${m.nombre}</td>
+                    <td>${m.descripcion || '—'}</td>
+                    <td>${m.horas || ''}</td>
+                    <td><span class="badge ${activa ? 'badge-active' : 'badge-inactive'}">${activa ? 'ACTIVA' : 'INACTIVA'}</span></td>
+                    <td>
+                        <button class="action-btn edit" onclick="abrirModal(JSON.parse(decodeURIComponent('${enc}')))">Editar</button>
+                        <button class="action-btn delete" onclick="eliminarMateria(${m.id})">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html || '<tr><td colspan="6" style="padding:20px;">No hay materias registradas</td></tr>';
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;color:red;">Error: ${e.message}</td></tr>`;
+        }
+    }
+
+    cargarMaterias();
+</script>
+</body>
+</html>

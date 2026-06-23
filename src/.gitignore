@@ -1,0 +1,16 @@
+# Entorno
+sga/.env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Node / Frontend
+node_modules/

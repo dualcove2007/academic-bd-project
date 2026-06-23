@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - AUDITORIA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        body { font-family: 'Open Sans', sans-serif; margin: 0; background-color: #A3FBB7; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 240px; background-color: #FFFFFF; display: flex; flex-direction: column; align-items: center; padding-top: 20px; padding-bottom: 25px; box-sizing: border-box; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-top { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .avatar-colegio { width: 150px; height: 150px; background-color: #A3FBB7; border-radius: 50%; margin-bottom: 30px; }
+        .nombre-colegio { font-size: 16px; font-weight: 800; color: #000000; text-align: center; margin-bottom: 40px; }
+        .menu-nav { width: 100%; padding: 0 15px; box-sizing: border-box; }
+        .menu-item { font-size: 14px; font-weight: 800; color: #000000; padding: 12px 15px; margin-bottom: 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; text-transform: uppercase; }
+        .menu-item.active { background-color: #4AFE6C; }
+        .btn-cerrar-sesion { background-color: #008000; color: #FFFFFF; font-size: 15px; font-weight: 800; border: none; padding: 14px 24px; border-radius: 25px; cursor: pointer; width: calc(100% - 30px); margin: 0 15px; text-align: center; text-transform: uppercase; }
+        .main-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header-top { background-color: #FFFFFF; height: 75px; display: flex; justify-content: space-between; align-items: center; padding: 0 35px; flex-shrink: 0; }
+        .titulo-vista { font-size: 24px; font-weight: 800; text-transform: uppercase; }
+        .usuario-info-block { display: flex; align-items: center; gap: 15px; }
+        .usuario-texto { text-align: right; }
+        .nombre-admin { font-size: 14px; font-weight: 800; color: #000000; }
+        .rol-admin { font-size: 13px; font-weight: 800; color: #FF0000; }
+        .avatar-admin { width: 50px; height: 50px; background-color: #FFA3A3; border-radius: 50%; }
+        .content-body { padding: 20px; box-sizing: border-box; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .view-wrapper { width: 100%; max-width: 1300px; display: flex; flex-direction: column; gap: 15px; }
+        .table-card-wrapper { background-color: #FFFFFF; border-radius: 15px; padding: 0; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.05); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #D5FFF2; font-size: 13px; font-weight: 800; padding: 14px 10px; text-align: center; border: 1px solid #CCCCCC; text-transform: uppercase; }
+        td { border: 1px solid #CCCCCC; padding: 14px 10px; vertical-align: middle; text-align: center; font-weight: 800; font-size: 12px; }
+        th:nth-child(1){width:8%} th:nth-child(2){width:15%} th:nth-child(3){width:15%} th:nth-child(4){width:12%} th:nth-child(5){width:30%} th:nth-child(6){width:15%} th:nth-child(7){width:5%}
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 10px; }
+        .pagination button { font-family: 'Open Sans', sans-serif; font-weight: 800; font-size: 14px; padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; background: #4AFE6C; }
+        .pagination span { font-weight: 800; font-size: 14px; }
+        .highlight-delete { background-color: #FFE0E0; }
+        .highlight-update { background-color: #E0F0FF; }
+        .highlight-insert { background-color: #E0FFE0; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_grados.html'">&bull; GRADOS</div>
+                <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS</div>
+                <div class="menu-item active">&bull; AUDITORIA</div>
+            </div>
+        </div>
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+    <div class="main-container">
+        <div class="header-top">
+            <div class="titulo-vista">Registro de Auditoria</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto"><div class="nombre-admin">[NOMBRE]</div><div class="rol-admin">"ADMINISTRATIVO"</div></div>
+                <div class="avatar-admin"></div>
+            </div>
+        </div>
+        <div class="content-body">
+            <div class="view-wrapper">
+                <div class="table-card-wrapper">
+                    <table>
+                        <thead><tr><th>ID</th><th>USUARIO</th><th>ACCION</th><th>TABLA</th><th>DETALLE</th><th>FECHA</th><th>IP</th></tr></thead>
+                        <tbody id="auditBody"><tr><td colspan="7">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="btnPrev" onclick="cambiarPagina(-1)">Anterior</button>
+                    <span id="pageInfo">Pagina 1</span>
+                    <button id="btnNext" onclick="cambiarPagina(1)">Siguiente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) document.querySelector('.nombre-admin').textContent = user.nombre;
+    let pagina = 1, totalPaginas = 1;
+
+    function loadAudit() {
+        document.getElementById('auditBody').innerHTML = '<tr><td colspan="7">Cargando...</td></tr>';
+        apiGet('/admin/auditoria?pagina=' + pagina + '&limite=50').then(data => {
+            totalPaginas = Math.ceil(data.total / data.limite) || 1;
+            document.getElementById('pageInfo').textContent = 'Pagina ' + data.pagina + ' de ' + totalPaginas + ' (' + data.total + ' registros)';
+            document.getElementById('btnPrev').disabled = pagina <= 1;
+            document.getElementById('btnNext').disabled = pagina >= totalPaginas;
+            const tbody = document.getElementById('auditBody');
+            if (!data.registros || data.registros.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">Sin registros de auditoria</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            data.registros.forEach(r => {
+                let cls = '';
+                const a = (r.accion || '').toUpperCase();
+                if (a.includes('DELETE')) cls = 'highlight-delete';
+                else if (a.includes('UPDATE')) cls = 'highlight-update';
+                else if (a.includes('INSERT')) cls = 'highlight-insert';
+                const tr = document.createElement('tr');
+                tr.className = cls;
+                tr.innerHTML = `<td>${r.id}</td><td>${r.usuario}</td><td>${r.accion}</td><td>${r.tabla}</td><td style="text-align:left;font-size:11px;">${r.detalle}</td><td>${r.fecha}</td><td>${r.ip || '---'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }).catch(() => {
+            document.getElementById('auditBody').innerHTML = '<tr><td colspan="7">Error al cargar auditoria</td></tr>';
+        });
+    }
+
+    function cambiarPagina(dir) {
+        pagina += dir;
+        if (pagina < 1) pagina = 1;
+        if (pagina > totalPaginas) pagina = totalPaginas;
+        loadAudit();
+    }
+
+    loadAudit();
+</script>
+</body>
+</html>

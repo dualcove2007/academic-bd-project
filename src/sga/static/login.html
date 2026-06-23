@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - DUALCOVE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="api.js"></script>
+    <style>
+        /* Estilos globales */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #A3FBB7; /* Fondo verde menta de la imagen */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Contenedor principal de la tarjeta */
+        .login-container {
+            width: 100%;
+            max-width: 440px; /* Ajustado al tamaño proporcional de la imagen */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Tarjeta blanca */
+        .login-card {
+            background-color: #FFFFFF;
+            padding: 45px 40px;
+            border-radius: 12px; /* Bordes redondeados suaves */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); /* Sombra difuminada */
+            text-align: center;
+        }
+
+        /* Títulos y subtítulos */
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #000000;
+            margin-top: 0;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        p {
+            font-size: 13.5px;
+            color: #444444;
+            font-weight: 700; /* Texto ligeramente grueso como el diseño */
+            margin-bottom: 35px;
+        }
+
+        /* Grupos de inputs */
+        .input-group {
+            text-align: left;
+            margin-bottom: 22px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 15px;
+            border: 1px solid #A6A6A6;
+            border-radius: 8px;
+            box-sizing: border-box;
+            color: #333333;
+        }
+
+        input::placeholder {
+            color: #888888;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #424242;
+        }
+
+        /* Bloque de acciones secundarias */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 35px;
+        }
+
+        .action-item {
+            background-color: #87FA9D; /* Verde de los botones pequeños */
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .action-item:hover {
+            background-color: #6CE884;
+        }
+
+        /* Botón Iniciar Sesión principal */
+        .submit-btn {
+            background-color: #2EFE65; /* Verde neón brillante del botón principal */
+            color: #000000;
+            border: none;
+            padding: 14px 0;
+            font-size: 22px; /* Letras grandes e impactantes */
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            letter-spacing: 0.5px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .submit-btn:hover {
+            background-color: #1CE852;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.99);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-card">
+            <h1>INICIAR SESION</h1>
+            <p>Ingresa tus credenciales para acceder a la plataforma.</p>
+            
+            <form onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <label for="usuario">USUARIO</label>
+                    <input type="text" id="usuario" placeholder="Ingresa tu usuario" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="contrasena">CONTRASEÑA</label>
+                    <input type="password" id="contrasena" placeholder="********" required>
+                </div>
+                
+                <div class="actions">
+                    <div class="action-item">Recordarme</div>
+                    <div class="action-item">Olvidé mi contraseña</div>
+                </div>
+                
+                <button type="submit" class="submit-btn">INICIAR SESION</button>
+            </form>
+            <div id="loginError" style="color:red;margin-top:15px;font-weight:bold;display:none;"></div>
+            <script>
+                async function handleLogin(e) {
+                    e.preventDefault();
+                    const btn = e.target.querySelector('.submit-btn');
+                    const errorDiv = document.getElementById('loginError');
+                    btn.textContent = 'INGRESANDO...';
+                    btn.disabled = true;
+                    errorDiv.style.display = 'none';
+
+                    try {
+                        const data = await apiPost('/auth/login', {
+                            usuario: document.getElementById('usuario').value,
+                            password: document.getElementById('contrasena').value
+                        });
+                        setAuth(data.access_token, { nombre: data.nombre, rol: data.rol });
+
+                        const redir = { admin: 'admin_inicio.html', docente: 'docente_inicio.html', estudiante: 'estudiante_inicio.html', acudiente: 'acudiente_inicio.html' };
+                        window.location.href = redir[data.rol] || 'login.html';
+                    } catch (err) {
+                        errorDiv.textContent = err.message;
+                        errorDiv.style.display = 'block';
+                    } finally {
+                        btn.textContent = 'INICIAR SESION';
+                        btn.disabled = false;
+                    }
+                }
+            </script>
+        </div>
+    </div>
+
+</body>
+</html>
