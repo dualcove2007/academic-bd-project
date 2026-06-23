@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Docente - OBSERVADOR DEL ESTUDIANTE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    
+    <style>
+        /* Estilos Base del Sistema */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* Fondo verde menta general */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde activo neón */
+        }
+
+        .btn-cerrar-sesion {
+            background-color: #008000;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal Derecho */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera Superior */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 24px;
+            font-weight: 800;
+            color: #000000;
+            text-transform: uppercase;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-docente {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .rol-docente {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0055FF;
+        }
+
+        .avatar-docente {
+            width: 50px;
+            height: 50px;
+            background-color: #A3D3FB;
+            border-radius: 50%;
+        }
+
+        /* Área de Contenido Principal */
+        .content-body {
+            padding: 25px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        .view-wrapper-split {
+            width: 100%;
+            max-width: 1150px;
+            display: flex;
+            gap: 25px;
+            height: 100%;
+        }
+
+        /* COLUMNA IZQUIERDA: Buscador y Lista */
+        .students-sidebar-card {
+            width: 260px;
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            padding: 20px 15px;
+            box-sizing: border-box;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .search-student-input {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 10px 15px;
+            border: 2px solid #000000;
+            border-radius: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .students-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-right: 5px;
+        }
+
+        /* Elementos de la lista de alumnos */
+        .student-list-item {
+            font-size: 13px;
+            font-weight: 800;
+            color: #000000;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .student-list-item.selected {
+            background-color: #4AFE6C; /* Destacado en verde neón */
+        }
+
+        /* COLUMNA DERECHA: Formulario de Registro e Historial */
+        .observer-form-card {
+            flex-grow: 1;
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            padding: 25px;
+            box-sizing: border-box;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        /* Elementos del Formulario */
+        .type-select {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #000000;
+            padding: 10px 45px 10px 15px;
+            border: 1px solid #000000;
+            border-radius: 8px;
+            background-color: #FFFFFF;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 14px;
+            width: fit-content;
+            max-width: 100%;
+        }
+
+        .textarea-observation {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            padding: 12px 15px;
+            border: 1px solid #000000;
+            border-radius: 10px;
+            width: 100%;
+            height: 100px;
+            box-sizing: border-box;
+            resize: none;
+            outline: none;
+        }
+
+        .input-commitment {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            padding: 12px 15px;
+            border: 1px solid #000000;
+            border-radius: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        /* Botón Registrar Acta */
+        .btn-container-right {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+        }
+
+        .btn-registrar-acta {
+            background-color: #3BFF65; /* Verde brillante llamativo */
+            color: #000000;
+            font-size: 13px;
+            font-weight: 800;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Línea Divisoria Sutil */
+        .divider-line {
+            border-top: 1px solid #E6E6E6;
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        /* SECCIÓN INFERIOR: Historial / Anotaciones Previas */
+        .previous-notes-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .notes-section-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .note-history-card {
+            background-color: #D9D9D9; /* Bloque de anotación gris */
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .note-header-meta {
+            font-size: 13px;
+            font-weight: 800;
+            color: #000000;
+            line-height: 1.3;
+        }
+
+        .note-description-text {
+            font-size: 13px;
+            font-weight: 800;
+            color: #000000;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra Lateral Izquierda -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location.href='docente_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location.href='docente_carga_academica.html'">&bull; MI CARGA ACADEMICA</div>
+                <div class="menu-item" onclick="window.location.href='docente_gestion_actividades.html'">&bull; GESTION DE ACTIVIDADES</div>
+                <div class="menu-item" onclick="window.location.href='docente_registro_notas.html'">&bull; REGISTRO DE NOTAS</div>
+                <div class="menu-item" onclick="window.location.href='docente_control_asistencia.html'">&bull; CONTROL DE ASISTENCIA</div>
+                <div class="menu-item active">&bull; OBSERVADOR DEL ESTUDIANTE</div>
+            </div>
+        </div>
+
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <!-- Contenedor Derecho Principal -->
+    <div class="main-container">
+        
+        <!-- Header Superior -->
+        <div class="header-top">
+            <div class="titulo-vista">Observador</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-docente">[NOMBRE DEL DOCENTE]</div>
+                    <div class="rol-docente">"DOCENTE"</div>
+                </div>
+                <div class="avatar-docente"></div>
+            </div>
+        </div>
+
+        <!-- Área de Contenido Principal -->
+        <div class="content-body">
+            <div class="view-wrapper-split">
+                
+                <!-- Columna Izquierda: Listado de Estudiantes -->
+                <div class="students-sidebar-card">
+                    <input type="text" class="search-student-input" placeholder="Buscar estudiante...">
+                    
+                    <div class="students-list-container" id="students-list">
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Formulario de Registro e Historial -->
+                <div class="observer-form-card">
+                    
+                    <!-- Selector de tipo de anotación -->
+                    <select class="type-select" id="tipo-select">
+                        <option value="">SELECCIONE TIPO...</option>
+                        <option value="FELICITACION">FELICITACION</option>
+                        <option value="FALTA LEVE">FALTA LEVE</option>
+                        <option value="FALTA GRAVE">FALTA GRAVE</option>
+                        <option value="COMPROMISO">COMPROMISO</option>
+                    </select>
+
+                    <!-- Selector de periodo -->
+                    <select class="type-select" id="periodo-select" style="margin-top:0;">
+                        <option value="">Periodo académico</option>
+                    </select>
+
+                    <!-- Campos de texto -->
+                    <textarea class="textarea-observation" placeholder="Describa detalladamente la situación observada..."></textarea>
+                    <input type="text" class="input-commitment" placeholder="Registrar compromisos adquiridos por el estudiante...">
+
+                    <!-- Botón de acción -->
+                    <div class="btn-container-right">
+                        <button class="btn-registrar-acta" onclick="registrarActa()">Registrar acta</button>
+                    </div>
+
+                    <!-- Separador -->
+                    <div class="divider-line"></div>
+
+                    <!-- Sección de historial inferior -->
+                    <div class="previous-notes-section" id="history-section">
+                        <span class="notes-section-title">Anotaciones Previas de este Año</span>
+                        <div id="history-container">
+                            <div class="note-history-card">
+                                <div class="note-description-text">Seleccione un estudiante para ver sus anotaciones</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) {
+        document.querySelector('.nombre-docente').textContent = user.nombre || user.email;
+    }
+    let estudiantes = [];
+    let selectedEstudianteId = null;
+    function cargarEstudiantes() {
+        apiGet('/docentes/mi-carga').then(data => {
+            const seen = {};
+            (data || []).forEach(item => {
+                if (item.estudiantes) {
+                    item.estudiantes.forEach(est => {
+                        if (!seen[est.id]) {
+                            seen[est.id] = true;
+                            estudiantes.push({ id: est.id, nombre: est.nombre || est.nombres + ' ' + (est.apellidos || '') });
+                        }
+                    });
+                }
+            });
+            if (estudiantes.length === 0 && data && data.length > 0) {
+                apiGet('/docentes/asistencia/' + data[0].id).then(asist => {
+                    (asist || []).forEach(a => {
+                        if (a.estudiante_id && !seen[a.estudiante_id]) {
+                            seen[a.estudiante_id] = true;
+                            estudiantes.push({ id: a.estudiante_id, nombre: a.estudiante_nombre || 'Estudiante #' + a.estudiante_id });
+                        }
+                    });
+                    renderStudentList();
+                }).catch(() => renderStudentList());
+            } else {
+                renderStudentList();
+            }
+        }).catch(() => {});
+    }
+    function renderStudentList(filter) {
+        const container = document.getElementById('students-list');
+        container.innerHTML = '';
+        const list = filter ? estudiantes.filter(e => e.nombre.toLowerCase().includes(filter.toLowerCase())) : estudiantes;
+        list.forEach(est => {
+            const div = document.createElement('div');
+            div.className = 'student-list-item' + (selectedEstudianteId === est.id ? ' selected' : '');
+            div.textContent = est.nombre;
+            div.onclick = function() { seleccionarEstudiante(est.id); };
+            container.appendChild(div);
+        });
+        if (list.length === 0) {
+            container.innerHTML = '<div class="student-list-item">Sin estudiantes</div>';
+        }
+    }
+    function seleccionarEstudiante(id) {
+        selectedEstudianteId = id;
+        renderStudentList(document.querySelector('.search-student-input').value);
+        const periodo = document.getElementById('periodo-select').value;
+        let url = '/docentes/observador/' + id;
+        if (periodo) url += '?periodo=' + encodeURIComponent(periodo);
+        apiGet(url).then(data => {
+            const container = document.getElementById('history-container');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="note-history-card"><div class="note-description-text">No hay anotaciones para este estudiante</div></div>';
+                return;
+            }
+            container.innerHTML = '';
+            data.forEach(obs => {
+                const card = document.createElement('div');
+                card.className = 'note-history-card';
+                card.innerHTML = '<div class="note-header-meta">' + escapeHtml(obs.fecha || '') + ' - ' + escapeHtml(obs.tipo || '') + ' (Periodo: ' + escapeHtml(obs.periodo || 'N/A') + '). Reportado por ' + escapeHtml(obs.reportado_por || user?.nombre || 'Docente') + '.</div><div class="note-description-text">' + escapeHtml(obs.descripcion || '') + '</div>';
+                container.appendChild(card);
+            });
+        }).catch(() => {});
+    }
+    function registrarActa() {
+        if (!selectedEstudianteId) { alert('Seleccione un estudiante'); return; }
+        const tipo = document.getElementById('tipo-select').value;
+        const descripcion = document.querySelector('.textarea-observation').value;
+        const compromiso = document.querySelector('.input-commitment').value;
+        const periodo = document.getElementById('periodo-select').value;
+        if (!descripcion) { alert('Describa la situación observada'); return; }
+        if (!tipo) { alert('Seleccione un tipo de anotación'); return; }
+        let descripcionCompleta = descripcion;
+        if (compromiso) descripcionCompleta += ' | COMPROMISOS: ' + compromiso;
+        apiPost('/docentes/observador', {
+            estudiante_id: selectedEstudianteId,
+            tipo: tipo,
+            descripcion: descripcionCompleta,
+            periodo: periodo
+        }).then(() => {
+            alert('Anotación registrada correctamente');
+            document.querySelector('.textarea-observation').value = '';
+            document.querySelector('.input-commitment').value = '';
+            seleccionarEstudiante(selectedEstudianteId);
+        }).catch(e => alert('Error: ' + e.message));
+    }
+    document.querySelector('.search-student-input').addEventListener('input', function() {
+        renderStudentList(this.value);
+    });
+
+    function cargarPeriodos() {
+        apiGet('/admin/periodos').then(data => {
+            const select = document.getElementById('periodo-select');
+            (data || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                opt.textContent = p.name + ' (' + p.academic_year + ')';
+                select.appendChild(opt);
+            });
+        }).catch(() => {});
+    }
+
+    cargarPeriodos();
+    cargarEstudiantes();
+</script>
+</body>
+</html>

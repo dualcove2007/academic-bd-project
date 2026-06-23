@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - GESTION DE USUARIOS (Eliminar)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    
+    <style>
+        /* Estilos Base del Sistema */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* Fondo verde menta general */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde activo neón */
+        }
+
+        .btn-cerrar-sesion {
+            background-color: #008000;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal Derecho */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera Superior */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 22px;
+            font-weight: 800;
+            color: #000000;
+            text-transform: uppercase;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-admin {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .rol-admin {
+            font-size: 13px;
+            font-weight: 800;
+            color: #FF0000;
+        }
+
+        .avatar-admin {
+            width: 50px;
+            height: 50px;
+            background-color: #FFA3A3;
+            border-radius: 50%;
+        }
+
+        /* Área de Contenido Principal */
+        .content-body {
+            padding: 25px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .view-wrapper {
+            width: 100%;
+            max-width: 1150px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Barra Superior de Filtros y Búsqueda */
+        .top-filter-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 15px;
+        }
+
+        .filters-left-group {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-grow: 1;
+        }
+
+        .search-user-input {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #000000;
+            padding: 10px 15px;
+            border: 1px solid #A6A6A6;
+            border-radius: 8px;
+            background-color: #FFFFFF;
+            width: 280px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .custom-select {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 10px 40px 10px 15px;
+            border: 1px solid #A6A6A6;
+            border-radius: 8px;
+            background-color: #FFFFFF;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 14px;
+        }
+
+        .select-rol { width: 170px; }
+        .select-estado { width: 170px; }
+
+        .btn-registrar-usuario {
+            background-color: #3BFF65;
+            color: #000000;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            white-space: nowrap;
+        }
+
+        /* Tabla de Usuarios */
+        .table-card-wrapper {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .users-table thead tr {
+            background-color: #D5FFF2;
+        }
+
+        .users-table th {
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+            padding: 16px 10px;
+            border: 1px solid #CCCCCC;
+        }
+
+        .users-table td {
+            border: 1px solid #CCCCCC;
+            padding: 25px 15px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .badge-oval {
+            border-radius: 30px;
+            padding: 12px 25px;
+            color: #FFFFFF;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .badge-oval.estudiante { background-color: #657BFF; }
+        .badge-oval.docente { background-color: #C365FF; }
+
+        .status-oval {
+            border-radius: 30px;
+            padding: 12px 25px;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .status-oval.activo { background-color: #4AFE6C; }
+        .status-oval.inactivo { background-color: #D9D9D9; }
+
+        .actions-cell-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .action-circle-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .action-circle-btn.edit { background-color: #FFE699; }
+        .action-circle-btn.refresh { background-color: #99B2FF; }
+        .action-circle-btn.delete { background-color: #FFA3A3; }
+
+        /* Barra de Paginación */
+        .pagination-footer {
+            background-color: #FFFFFF;
+            border-radius: 10px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .pagination-text { font-size: 14px; font-weight: 800; }
+
+        .pagination-nav-buttons { display: flex; gap: 10px; }
+
+        .nav-arrow-btn {
+            background-color: #99B2FF;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            color: #FFFFFF;
+            font-weight: 800;
+        }
+
+        /* CAPA DEL MODAL INTERMITENTE (OVERLAY DE CONFIRMACION) */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4); /* Capa oscura translúcida */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        /* Tarjeta Contenedora del Dialogo */
+        .modal-container-card {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            width: 420px;
+            max-width: 90%;
+            padding: 30px 25px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Icono circular de papelera */
+        .modal-icon-circle {
+            width: 48px;
+            height: 48px;
+            background-color: #FFA3A3; /* Tono salmón/rojo claro */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #666666;
+            margin: 0 0 15px 0;
+        }
+
+        .modal-body-text {
+            font-size: 13px;
+            font-weight: 800;
+            color: #7F7F7F;
+            line-height: 1.4;
+            margin: 0 0 25px 0;
+            padding: 0 10px;
+        }
+
+        /* Grupo de botones del Modal */
+        .modal-actions-wrapper {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-modal {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            min-width: 120px;
+        }
+
+        .btn-modal.cancelar {
+            background-color: #D9D9D9; /* Gris neutral */
+            color: #000000;
+        }
+
+        .btn-modal.eliminar {
+            background-color: #FF1A1A; /* Rojo brillante de alerta */
+            color: #FFFFFF;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MODAL DE ELIMINACIÓN SUPERPUESTO (Fiel a la imagen image_797785.png) -->
+    <div class="modal-overlay">
+        <div class="modal-container-card">
+            <div class="modal-icon-circle">🗑️</div>
+            <h3 class="modal-title">Eliminar Usuario?</h3>
+            <p class="modal-body-text">
+                Estás a punto de alterar el estado del usuario [USUARIO]. Si lo eliminas, perderá el acceso al sistema de forma permanente.
+            </p>
+            <div class="modal-actions-wrapper">
+                <button class="btn-modal cancelar" onclick="window.location='admin_gestion_usuarios.html'">Cancelar</button>
+                <button class="btn-modal eliminar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra Lateral Izquierda (Detrás/Bloqueada) -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item active" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
+                <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
+            </div>
+        </div>
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <!-- Contenedor Derecho Principal (Detrás/Bloqueada) -->
+    <div class="main-container">
+        <div class="header-top">
+            <div class="titulo-vista">Gestion de usuarios</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-admin">[NOMBRE DEL ADMIN]</div>
+                    <div class="rol-admin">"ADMINISTRATIVO"</div>
+                </div>
+                <div class="avatar-admin"></div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="view-wrapper">
+                
+                <div class="top-filter-bar">
+                    <div class="filters-left-group">
+                        <input type="text" class="search-user-input" placeholder="Buscar por nombre, documento o ID...">
+                        <select class="custom-select select-rol"><option>Rol: Todos</option></select>
+                        <select class="custom-select select-estado"><option>Estado: activos</option></select>
+                    </div>
+                    <button class="btn-registrar-usuario">+ Registrar Usuario</button>
+                </div>
+
+                <div class="table-card-wrapper">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario / ID</th>
+                                <th>Nombre Completo</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>[Usuario / ID]</td>
+                                <td>[Nombre completo]</td>
+                                <td><div class="badge-oval estudiante">Estudiante</div></td>
+                                <td><div class="status-oval activo">ACTIVO</div></td>
+                                <td>
+                                    <div class="actions-cell-container">
+                                        <button class="action-circle-btn edit">✏️</button>
+                                        <button class="action-circle-btn refresh">🔄</button>
+                                        <button class="action-circle-btn delete">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>[Usuario / ID]</td>
+                                <td>[Nombre completo]</td>
+                                <td><div class="badge-oval docente">Docente</div></td>
+                                <td><div class="status-oval activo">ACTIVO</div></td>
+                                <td>
+                                    <div class="actions-cell-container">
+                                        <button class="action-circle-btn edit">✏️</button>
+                                        <button class="action-circle-btn refresh">🔄</button>
+                                        <button class="action-circle-btn delete">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>[Usuario / ID]</td>
+                                <td>[Nombre completo]</td>
+                                <td><div class="badge-oval estudiante">Estudiante</div></td>
+                                <td><div class="status-oval inactivo">INACTIVO</div></td>
+                                <td>
+                                    <div class="actions-cell-container">
+                                        <button class="action-circle-btn edit">✏️</button>
+                                        <button class="action-circle-btn refresh">🔄</button>
+                                        <button class="action-circle-btn delete">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-footer">
+                    <div class="pagination-text">Mostrando N-N de NNN usuarios</div>
+                    <div class="pagination-nav-buttons">
+                        <button class="nav-arrow-btn">&#9664;</button>
+                        <button class="nav-arrow-btn">&#9654;</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) document.querySelector('.nombre-admin').textContent = user.nombre || user.username || user.name;
+</script>
+</body>
+</html>

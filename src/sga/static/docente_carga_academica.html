@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Docente - MI CARGA ACADEMICA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    
+    <style>
+        /* Estilos Base del Sistema */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* Fondo verde menta general */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde activo */
+        }
+
+        .btn-cerrar-sesion {
+            background-color: #008000;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal Derecho */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera Superior */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 24px;
+            font-weight: 800;
+            color: #000000;
+            text-transform: uppercase;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-docente {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .rol-docente {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0055FF;
+        }
+
+        .avatar-docente {
+            width: 50px;
+            height: 50px;
+            background-color: #A3D3FB;
+            border-radius: 50%;
+        }
+
+        /* Área de Contenido Principal */
+        .content-body {
+            padding: 25px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .view-wrapper {
+            width: 100%;
+            max-width: 1150px;
+            box-sizing: border-box;
+        }
+
+        /* Contenedor Blanco del Horario */
+        .schedule-card-wrapper {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            padding: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        /* Tabla del Horario */
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        /* Encabezado Celeste Claro */
+        .schedule-table thead tr {
+            background-color: #D5FFF2;
+        }
+
+        .schedule-table th {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            padding: 15px 5px;
+            text-align: center;
+            border: 1px solid #E6E6E6;
+        }
+
+        .schedule-table th:first-child {
+            width: 16%; /* Espacio para las horas */
+        }
+
+        .schedule-table td {
+            border: 1px solid #F0F0F0;
+            padding: 10px 6px;
+            vertical-align: middle;
+            box-sizing: border-box;
+        }
+
+        /* Columna de Horas */
+        .time-cell {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        /* Bloque Especial de Receso */
+        .receso-row {
+            background-color: #FFFFFF;
+        }
+
+        .receso-text {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            text-align: left;
+            padding-left: 10px;
+            line-height: 1.3;
+        }
+
+        /* Tarjeta de Clase Azul */
+        .class-card {
+            background-color: #3B55E6; /* Azul rey */
+            border-radius: 8px;
+            padding: 10px 5px;
+            color: #FFFFFF;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .class-title {
+            font-size: 12px;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra Lateral Izquierda -->
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location.href='docente_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item active">&bull; MI CARGA ACADEMICA</div>
+                <div class="menu-item" onclick="window.location.href='docente_gestion_actividades.html'">&bull; GESTION DE ACTIVIDADES</div>
+                <div class="menu-item" onclick="window.location.href='docente_registro_notas.html'">&bull; REGISTRO DE NOTAS</div>
+                <div class="menu-item" onclick="window.location.href='docente_control_asistencia.html'">&bull; CONTROL DE ASISTENCIA</div>
+                <div class="menu-item" onclick="window.location.href='docente_observador.html'">&bull; OBSERVADOR DEL ESTUDIANTE</div>
+            </div>
+        </div>
+
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <!-- Contenedor Derecho Principal -->
+    <div class="main-container">
+        
+        <!-- Header Superior -->
+        <div class="header-top">
+            <div class="titulo-vista">Mi carga academica (Horario)</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-docente">[NOMBRE DEL DOCENTE]</div>
+                    <div class="rol-docente">"DOCENTE"</div>
+                </div>
+                <div class="avatar-docente"></div>
+            </div>
+        </div>
+
+        <!-- Área de Contenido -->
+        <div class="content-body">
+            <div class="view-wrapper">
+                
+                <!-- Tabla del Horario General -->
+                <div class="schedule-card-wrapper">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>HORA</th>
+                                <th>LUNES</th>
+                                <th>MARTES</th>
+                                <th>MIERCOLES</th>
+                                <th>JUEVES</th>
+                                <th>VIERNES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            <!-- Bloque 1 -->
+                            <tr>
+                                <td class="time-cell">7:00AM-7:55AM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                            <!-- Bloque 2 -->
+                            <tr>
+                                <td class="time-cell">7:55AM-8:50AM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                            <!-- Bloque 3 -->
+                            <tr>
+                                <td class="time-cell">8:50AM-9:45AM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                            <!-- Fila Especial de Receso -->
+                            <tr class="receso-row">
+                                <td class="receso-text" colspan="6">
+                                    9:45AM-10:15AM<br>RECESO
+                                </td>
+                            </tr>
+
+                            <!-- Bloque 4 -->
+                            <tr>
+                                <td class="time-cell">10:15AM-11:10AM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                            <!-- Bloque 5 -->
+                            <tr>
+                                <td class="time-cell">11:10AM-12:05AM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                            <!-- Bloque 6 -->
+                            <tr>
+                                <td class="time-cell">12:05AM-1:00PM</td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                                <td><div class="class-card"><span class="class-title">Grado: __</span><span>[Materia]</span><span>Salón ___ - Bloque _</span><span>Nh semanales</span></div></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) {
+        document.querySelector('.nombre-docente').textContent = user.nombre || user.email;
+    }
+
+    function formatTime(t) {
+        if (!t) return '';
+        const parts = t.split(':');
+        const h = parseInt(parts[0]), m = parts[1];
+        if (isNaN(h)) return t;
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+        return h12 + ':' + m + ' ' + ampm;
+    }
+
+    function timeToMinutes(t) {
+        if (!t) return 0;
+        const parts = t.split(':');
+        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+
+    const dayNames = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'];
+    const dayMap = {1:0,2:1,3:2,4:3,5:4};
+    const tbody = document.querySelector('.schedule-table tbody');
+
+    apiGet('/docentes/mi-carga').then(data => {
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">No hay carga académica registrada</td></tr>';
+            return;
+        }
+
+        const timeSet = new Map();
+        const slots = [];
+        data.forEach(item => {
+            if (item.hora_inicio && item.hora_fin) {
+                const key = item.hora_inicio;
+                if (!timeSet.has(key)) {
+                    const slot = { inicio: item.hora_inicio, fin: item.hora_fin };
+                    timeSet.set(key, slot);
+                    slots.push(slot);
+                }
+            }
+        });
+        slots.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+        if (slots.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">No hay horarios registrados</td></tr>';
+            return;
+        }
+
+        const rowIndex = {};
+        slots.forEach((s, i) => { rowIndex[s.inicio] = i; });
+
+        const numRows = slots.length;
+        const grid = Array.from({length: numRows}, () => Array(5).fill(null));
+        data.forEach(item => {
+            const r = rowIndex[item.hora_inicio];
+            const c = dayMap[item.dia_semana];
+            if (r !== undefined && c !== undefined) {
+                grid[r][c] = item;
+            }
+        });
+
+        let html = '';
+        for (let i = 0; i < numRows; i++) {
+            const slot = slots[i];
+            html += '<tr><td class="time-cell">' + formatTime(slot.inicio) + ' - ' + formatTime(slot.fin) + '</td>';
+            for (let j = 0; j < 5; j++) {
+                const item = grid[i][j];
+                if (item) {
+                    html += '<td><div class="class-card"><span class="class-title">Grado: ' + escapeHtml(item.grado || '') + '</span><span>' + escapeHtml(item.materia_nombre || '') + '</span><span>Salón ' + escapeHtml(item.salon || '') + '</span><span>' + escapeHtml(item.nh_semanales || '0') + 'h semanales</span></div></td>';
+                } else {
+                    html += '<td></td>';
+                }
+            }
+            html += '</tr>';
+
+            if (i < numRows - 1) {
+                const gapMin = timeToMinutes(slots[i+1].inicio) - timeToMinutes(slots[i].fin);
+                if (gapMin >= 15) {
+                    html += '<tr class="receso-row"><td class="receso-text" colspan="6">' + formatTime(slots[i].fin) + ' - ' + formatTime(slots[i+1].inicio) + '<br>RECESO</td></tr>';
+                }
+            }
+        }
+        tbody.innerHTML = html;
+    }).catch(() => {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Error al cargar el horario</td></tr>';
+    });
+</script>
+</body>
+</html>

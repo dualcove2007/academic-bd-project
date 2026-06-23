@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - CARGA ACADEMICA Y HORARIOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="api.js"></script>
+    
+    <style>
+        /* Estilos Base del Sistema */
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            background-color: #A3FBB7; /* Fondo verde menta general */
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barra Lateral Izquierda */
+        .sidebar {
+            width: 240px;
+            background-color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sidebar-top {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .avatar-colegio {
+            width: 150px;
+            height: 150px;
+            background-color: #A3FBB7;
+            border-radius: 50%;
+            margin-bottom: 30px;
+        }
+
+        .nombre-colegio {
+            font-size: 16px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .menu-nav {
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .menu-item {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .menu-item.active {
+            background-color: #4AFE6C; /* Verde activo neón */
+        }
+
+        .btn-cerrar-sesion {
+            background-color: #008000;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            width: calc(100% - 30px);
+            margin: 0 15px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal Derecho */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Cabecera Superior */
+        .header-top {
+            background-color: #FFFFFF;
+            height: 75px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 35px;
+            flex-shrink: 0;
+        }
+
+        .titulo-vista {
+            font-size: 22px;
+            font-weight: 800;
+            color: #000000;
+            text-transform: uppercase;
+        }
+
+        .usuario-info-block {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .usuario-texto {
+            text-align: right;
+        }
+
+        .nombre-admin {
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .rol-admin {
+            font-size: 13px;
+            font-weight: 800;
+            color: #FF0000;
+        }
+
+        .avatar-admin {
+            width: 50px;
+            height: 50px;
+            background-color: #FFA3A3;
+            border-radius: 50%;
+        }
+
+        /* Área de Contenido Principal dividido en dos bloques */
+        .content-body {
+            padding: 25px;
+            box-sizing: border-box;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .view-wrapper-split {
+            width: 100%;
+            max-width: 1150px;
+            display: flex;
+            gap: 25px;
+            box-sizing: border-box;
+            align-items: flex-start;
+        }
+
+        /* Bloque Izquierdo: Formulario de Asignación */
+        .form-card-left {
+            background-color: #FFFFFF;
+            width: 320px;
+            border-radius: 15px;
+            padding: 35px 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        /* Bloque Derecho: Tabla de Carga Asignada */
+        .table-card-right {
+            background-color: #FFFFFF;
+            border-radius: 15px;
+            flex-grow: 1;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Estilos de Selects del Formulario */
+        .form-select {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #000000;
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #000000;
+            border-radius: 10px;
+            background-color: #FFFFFF;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 14px;
+            box-sizing: border-box;
+        }
+
+        /* Botón Verde Neón del Formulario */
+        .btn-asignar-intensidad {
+            background-color: #4AFE6C; /* Verde activo neón exacto */
+            color: #000000;
+            font-size: 14px;
+            font-weight: 800;
+            border: none;
+            padding: 14px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Estilos de la Tabla */
+        .carga-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* Encabezado Celeste/Menta Claro */
+        .carga-table thead tr {
+            background-color: #D5FFF2;
+        }
+
+        .carga-table th {
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+            padding: 16px 10px;
+            text-align: center;
+            border: 1px solid #CCCCCC;
+        }
+
+        /* Distribución de columnas aproximada */
+        .carga-table th:nth-child(1) { width: 22%; }
+        .carga-table th:nth-child(2) { width: 24%; }
+        .carga-table th:nth-child(3) { width: 24%; }
+        .carga-table th:nth-child(4) { width: 15%; }
+        .carga-table th:nth-child(5) { width: 15%; }
+
+        .carga-table td {
+            border: 1px solid #CCCCCC;
+            padding: 30px 15px;
+            vertical-align: middle;
+            text-align: center;
+            box-sizing: border-box;
+            font-size: 15px;
+            font-weight: 800;
+            color: #000000;
+        }
+
+        /* Icono de papelera para eliminación */
+        .btn-delete-action {
+            width: 40px;
+            height: 40px;
+            background-color: #FFA3A3; /* Fondo rojizo suave */
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            margin: 0 auto;
+        }
+
+        .btn-delete-action svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: #FF0000;
+            stroke-width: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div>
+            <div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='admin_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
+                <div class="menu-item active">&bull; CARGA ACADEMICA Y HORARIOS</div>
+                <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
+            </div>
+        </div>
+
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="header-top">
+            <div class="titulo-vista">Carga academica y horarios</div>
+            <div class="usuario-info-block">
+                <div class="usuario-texto">
+                    <div class="nombre-admin">[NOMBRE DEL ADMIN]</div>
+                    <div class="rol-admin">"ADMINISTRATIVO"</div>
+                </div>
+                <div class="avatar-admin"></div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="view-wrapper-split">
+                
+                <div class="form-card-left">
+                    <form id="cargaForm">
+                        <select class="form-select" id="docenteSelect">
+                            <option value="">Seleccione Docente</option>
+                        </select>
+
+                        <select class="form-select" id="cursoSelect">
+                            <option value="">Seleccione Curso</option>
+                        </select>
+
+                        <select class="form-select" id="materiaSelect">
+                            <option value="">Seleccione Materia</option>
+                        </select>
+
+                        <select class="form-select" id="horarioSelect">
+                            <option value="">Seleccione Horario</option>
+                        </select>
+
+                        <select class="form-select" id="salonSelect">
+                            <option value="">Seleccione Salón</option>
+                        </select>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Lunes" checked> Lun
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Martes" checked> Mar
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Miércoles" checked> Mié
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Jueves" checked> Jue
+                            </label>
+                            <label style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                                <input type="checkbox" class="dia-check" value="Viernes" checked> Vie
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn-asignar-intensidad">Asignar Intensidad Horaria</button>
+                    </form>
+                </div>
+
+                <div class="table-card-right">
+                    <table class="carga-table">
+                        <thead>
+                            <tr>
+                                <th>Docente</th>
+                                <th>Curso / Materia</th>
+                                <th>Horario Asignado</th>
+                                <th>Salón</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cargaBody">
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+
+    const user = getUser();
+    document.querySelector('.nombre-admin').textContent = user.nombre;
+
+    const docenteSelect = document.getElementById('docenteSelect');
+    const cursoSelect = document.getElementById('cursoSelect');
+    const materiaSelect = document.getElementById('materiaSelect');
+    const horarioSelect = document.getElementById('horarioSelect');
+    const salonSelect = document.getElementById('salonSelect');
+    const cargaBody = document.getElementById('cargaBody');
+    const cargaForm = document.getElementById('cargaForm');
+
+    async function loadDocentes() {
+        try {
+            const docentes = await apiGet('/admin/docentes');
+            docenteSelect.innerHTML = '<option value="">Seleccione Docente</option>';
+            docentes.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.teacher_id;
+                opt.textContent = d.nombre;
+                docenteSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando docentes:', e); }
+    }
+
+    async function loadCursos() {
+        try {
+            const cursos = await apiGet('/admin/cursos');
+            cursoSelect.innerHTML = '<option value="">Seleccione Curso</option>';
+            cursos.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.course_id;
+                opt.textContent = c.nombre;
+                cursoSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando cursos:', e); }
+    }
+
+    async function loadMaterias() {
+        try {
+            const materias = await apiGet('/admin/materias');
+            materiaSelect.innerHTML = '<option value="">Seleccione Materia</option>';
+            materias.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.nombre;
+                materiaSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando materias:', e); }
+    }
+
+    async function loadHorarios() {
+        try {
+            const horarios = await apiGet('/admin/horarios');
+            horarioSelect.innerHTML = '<option value="">Seleccione Horario</option>';
+            horarios.forEach(h => {
+                const opt = document.createElement('option');
+                opt.value = h.id;
+                opt.textContent = h.nombre;
+                opt.dataset.horaInicio = h.hora_inicio;
+                opt.dataset.horaFin = h.hora_fin;
+                horarioSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando horarios:', e); }
+    }
+
+    async function loadSalones() {
+        try {
+            const salones = await apiGet('/admin/salones');
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            salones.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.classroom_id;
+                opt.textContent = s.nombre + (s.ubicacion ? ' (' + s.ubicacion + ')' : '') + ' - Cap: ' + s.capacidad;
+                salonSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando salones:', e); }
+    }
+
+    async function loadCarga() {
+        try {
+            const carga = await apiGet('/admin/carga-academica');
+            cargaBody.innerHTML = '';
+            carga.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.docente_nombre || c.docente || ''}</td>
+                    <td>${c.curso || ''} / ${c.materia_nombre || c.materia || ''}</td>
+                    <td>${c.horario || ''}</td>
+                    <td>${c.salon || '-'}</td>
+                    <td>
+                        <button class="btn-delete-action" data-id="${c.id}">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                cargaBody.appendChild(tr);
+            });
+        } catch (e) { console.error('Error cargando carga:', e); }
+    }
+
+    document.addEventListener('click', async e => {
+        const btn = e.target.closest('.btn-delete-action');
+        if (btn && btn.dataset.id) {
+            if (confirm('¿Eliminar esta asignación?')) {
+                try {
+                    await apiDelete(`/admin/carga-academica/${btn.dataset.id}`);
+                    loadCarga();
+                } catch (e) { alert('Error: ' + e.message); }
+            }
+        }
+    });
+
+    cargaForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const diasSel = Array.from(document.querySelectorAll('.dia-check:checked')).map(cb => cb.value);
+        if (!diasSel.length) { alert('Seleccione al menos un día'); return; }
+        const horarioOpt = horarioSelect.options[horarioSelect.selectedIndex];
+        const data = {
+            docente_id: docenteSelect.value,
+            curso_id: cursoSelect.value,
+            materia_id: materiaSelect.value,
+            hora_inicio: horarioOpt.dataset.horaInicio,
+            hora_fin: horarioOpt.dataset.horaFin,
+            dias: diasSel,
+            classroom_id: salonSelect.value || null,
+        };
+        if (!data.docente_id || !data.curso_id || !data.materia_id || !data.hora_inicio) {
+            alert('Seleccione docente, curso, materia y horario');
+            return;
+        }
+        try {
+            await apiPost('/admin/carga-academica', data);
+            loadCarga();
+            cargaForm.reset();
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            loadSalones();
+        } catch (e) { alert('Error: ' + e.message); }
+    });
+
+    loadDocentes();
+    loadCursos();
+    loadMaterias();
+    loadHorarios();
+    loadSalones();
+    loadCarga();
+</script>
+</body>
+</html>
