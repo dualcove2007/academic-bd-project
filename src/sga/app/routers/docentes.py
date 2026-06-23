@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
@@ -7,7 +7,7 @@ from app.db.database import get_db
 from app.db.models import (
     AcademicLoad, Attendance, Activity, GradeRecord,
     Observador, Teacher, Student, Enrollment, User,
-    Schedule, Subject, Grade, AcademicPeriod, Classroom
+    Schedule, Subject, Course, AcademicPeriod, Classroom, Grade
 )
 from app.core.security import require_rol
 import uuid
@@ -49,7 +49,7 @@ async def verificar_actividad_de_docente(actividad_id: int, db: AsyncSession, te
 async def verificar_estudiante_de_docente(estudiante_id: int, db: AsyncSession, teacher_id: int):
     """Verify the student is enrolled in at least one course taught by this teacher."""
     result = await db.execute(
-        select(Enrollment).join(AcademicLoad, AcademicLoad.grade_id == Enrollment.grade_id)
+        select(Enrollment).join(AcademicLoad, AcademicLoad.course_id == Enrollment.course_id)
         .where(
             Enrollment.student_id == estudiante_id,
             AcademicLoad.teacher_id == teacher_id,
@@ -79,7 +79,7 @@ async def mi_carga_academica(
         return []
 
     load_ids = [l.academic_load_id for l in loads]
-    grade_ids = list(set(l.grade_id for l in loads))
+    course_ids = list(set(l.course_id for l in loads))
     subject_ids = list(set(l.subject_id for l in loads))
 
     subjects_map = {}
@@ -88,11 +88,20 @@ async def mi_carga_academica(
         for s in res.scalars().all():
             subjects_map[s.subject_id] = s
 
+    courses_map = {}
+    grade_ids = []
+    if course_ids:
+        res = await db.execute(select(Course).where(Course.course_id.in_(course_ids)))
+        for c in res.scalars().all():
+            courses_map[c.course_id] = c
+            if c.grade_id:
+                grade_ids.append(c.grade_id)
+
     grades_map = {}
     if grade_ids:
         res = await db.execute(select(Grade).where(Grade.grade_id.in_(grade_ids)))
-        for c in res.scalars().all():
-            grades_map[c.grade_id] = c
+        for g in res.scalars().all():
+            grades_map[g.grade_id] = g
 
     schedules_by_load = {}
     if load_ids:
@@ -111,19 +120,19 @@ async def mi_carga_academica(
         for cr in res.scalars().all():
             classrooms_map[cr.classroom_id] = cr
 
-    enrollments_by_grade = {}
-    if grade_ids:
+    enrollments_by_course = {}
+    if course_ids:
         res = await db.execute(
             select(Enrollment).where(
-                Enrollment.grade_id.in_(grade_ids),
-                Enrollment.status.in_(["active", "completed"]),
+                Enrollment.course_id.in_(course_ids),
+                Enrollment.status == "active",
             )
         )
         for e in res.scalars().all():
-            enrollments_by_grade.setdefault(e.grade_id, []).append(e)
+            enrollments_by_course.setdefault(e.course_id, []).append(e)
 
     all_student_ids = []
-    for enr_list in enrollments_by_grade.values():
+    for enr_list in enrollments_by_course.values():
         for e in enr_list:
             all_student_ids.append(e.student_id)
     students_map = {}
@@ -137,9 +146,10 @@ async def mi_carga_academica(
     output = []
     for l in loads:
         subject = subjects_map.get(l.subject_id)
-        grade = grades_map.get(l.grade_id)
+        course = courses_map.get(l.course_id)
+        grade = grades_map.get(course.grade_id) if course else None
         schedules = schedules_by_load.get(l.academic_load_id, [])
-        enrollments = enrollments_by_grade.get(l.grade_id, []) if grade else []
+        enrollments = enrollments_by_course.get(l.course_id, []) if course else []
 
         students_list = []
         for e in enrollments:
@@ -150,7 +160,7 @@ async def mi_carga_academica(
                     "nombre": f"{student.first_name} {student.last_name}",
                 })
 
-        grado_str = grade.name if grade else "N/A"
+        grado_str = f"{grade.name} {course.name}" if grade and course else (course.name if course else "N/A")
         num_schedules = len(schedules)
 
         for s in schedules:
@@ -163,7 +173,7 @@ async def mi_carga_academica(
                 "materia_id": l.academic_load_id,
                 "materia_nombre": subject.name if subject else "N/A",
                 "grado": grado_str,
-                "curso": grade.name if grade else "N/A",
+                "curso": course.name if course else "N/A",
                 "dia_semana": dia,
                 "salon": classroom.name if classroom else "",
                 "nh_semanales": str(num_schedules),
@@ -179,7 +189,7 @@ async def mi_carga_academica(
                 "materia_id": l.academic_load_id,
                 "materia_nombre": subject.name if subject else "N/A",
                 "grado": grado_str,
-                "curso": grade.name if grade else "N/A",
+                "curso": course.name if course else "N/A",
                 "dia_semana": 1,
                 "salon": "",
                 "nh_semanales": "0",
@@ -213,8 +223,8 @@ async def ver_estudiantes_carga(
 
     enroll_result = await db.execute(
         select(Enrollment)
-        .join(AcademicLoad, AcademicLoad.grade_id == Enrollment.grade_id)
-        .where(AcademicLoad.academic_load_id == carga_id, Enrollment.status.in_(["active", "completed"]))
+        .join(AcademicLoad, AcademicLoad.course_id == Enrollment.course_id)
+        .where(AcademicLoad.academic_load_id == carga_id, Enrollment.status == "active")
     )
     enrollments = enroll_result.scalars().all()
 
@@ -246,8 +256,8 @@ async def ver_asistencia_clase(
 
     enroll_result = await db.execute(
         select(Enrollment)
-        .join(AcademicLoad, AcademicLoad.grade_id == Enrollment.grade_id)
-        .where(AcademicLoad.academic_load_id == carga_id, Enrollment.status.in_(["active", "completed"]))
+        .join(AcademicLoad, AcademicLoad.course_id == Enrollment.course_id)
+        .where(AcademicLoad.academic_load_id == carga_id, Enrollment.status == "active")
     )
     enrollments = enroll_result.scalars().all()
 
@@ -296,7 +306,7 @@ async def ver_asistencia_clase(
 
 @router.post("/asistencia", status_code=status.HTTP_201_CREATED)
 async def registrar_asistencia(
-    registros: list = Body(...),
+    registros: list,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("docente", "admin")),
 ):
@@ -322,7 +332,7 @@ async def registrar_asistencia(
 
         enroll = (await db.execute(
             select(Enrollment)
-            .join(AcademicLoad, AcademicLoad.grade_id == Enrollment.grade_id)
+            .join(AcademicLoad, AcademicLoad.course_id == Enrollment.course_id)
             .where(AcademicLoad.academic_load_id == carga_id, Enrollment.student_id == estudiante_id)
         )).scalar_one_or_none()
 
@@ -531,7 +541,7 @@ async def ver_notas_actividad(
 
 @router.post("/notas", status_code=status.HTTP_201_CREATED)
 async def registrar_notas(
-    notas: list = Body(...),
+    notas: list,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("docente", "admin")),
 ):
@@ -554,7 +564,7 @@ async def registrar_notas(
             continue
 
         enroll = (await db.execute(
-            select(Enrollment).join(AcademicLoad, AcademicLoad.grade_id == Enrollment.grade_id)
+            select(Enrollment).join(AcademicLoad, AcademicLoad.course_id == Enrollment.course_id)
             .join(Activity, Activity.academic_load_id == AcademicLoad.academic_load_id)
             .where(
                 Enrollment.student_id == estudiante_id,
@@ -624,71 +634,6 @@ async def editar_nota(
 # ─────────────────────────────────────────
 TIPOS_PERMITIDOS = {"FELICITACION", "FALTA LEVE", "FALTA GRAVE", "COMPROMISO"}
 
-@router.get("/observador/estudiantes")
-async def listar_estudiantes_observador(
-    grado_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_rol("docente", "admin")),
-):
-    """Lista todos los estudiantes con su grado para el observador"""
-    base_query = select(Student)
-    if grado_id:
-        base_query = (
-            base_query
-            .join(Enrollment, Enrollment.student_id == Student.student_id)
-            .where(Enrollment.grade_id == grado_id, Enrollment.status.in_(["active", "completed"]))
-            .distinct()
-        )
-    result = await db.execute(base_query)
-    students = result.scalars().all()
-
-    student_ids = [s.student_id for s in students]
-    enrollments_map = {}
-    if student_ids:
-        enr_result = await db.execute(
-            select(Enrollment).where(
-                Enrollment.student_id.in_(student_ids),
-                Enrollment.status.in_(["active", "completed"])
-            )
-        )
-        for e in enr_result.scalars().all():
-            if e.student_id not in enrollments_map:
-                enrollments_map[e.student_id] = e
-
-    grade_ids = list(set(e.grade_id for e in enrollments_map.values()))
-    grades_map = {}
-    if grade_ids:
-        res = await db.execute(select(Grade).where(Grade.grade_id.in_(grade_ids)))
-        for g in res.scalars().all():
-            grades_map[g.grade_id] = g.name
-
-    output = []
-    for s in students:
-        enr = enrollments_map.get(s.student_id)
-        grado_nombre = grades_map.get(enr.grade_id, "Sin grado") if enr else "Sin matricula"
-        output.append({
-            "id": s.student_id,
-            "nombre": f"{s.first_name} {s.last_name}",
-            "grado": grado_nombre,
-            "grado_id": enr.grade_id if enr else None,
-        })
-    return output
-
-@router.get("/observador/grados")
-async def listar_grados_observador(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_rol("docente", "admin")),
-):
-    """Lista los grados que tienen estudiantes matriculados"""
-    result = await db.execute(
-        select(Grade.grade_id, Grade.name)
-        .join(Enrollment, Enrollment.grade_id == Grade.grade_id)
-        .where(Enrollment.status.in_(["active", "completed"]))
-        .distinct()
-        .order_by(Grade.grade_id)
-    )
-    return [{"grade_id": row.grade_id, "nombre": row.name} for row in result]
-
 @router.post("/observador", status_code=status.HTTP_201_CREATED)
 async def registrar_anotacion(
     data: dict,
@@ -744,6 +689,9 @@ async def ver_observador_estudiante(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_rol("docente", "admin")),
 ):
+    teacher = await get_teacher_by_user(db, current_user["user_id"])
+    await verificar_estudiante_de_docente(estudiante_id, db, teacher.teacher_id)
+
     query = select(Observador).where(Observador.estudiante_id == estudiante_id)
     if periodo:
         query = query.where(Observador.periodo == periodo)

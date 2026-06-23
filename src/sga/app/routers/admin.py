@@ -6,10 +6,10 @@ from datetime import date, time
 from typing import Optional
 from app.db.database import get_db
 from app.db.models import (
-    User, Teacher, Student, Role, Subject, Guardian, StudentGuardian,
-    Enrollment, AcademicLoad, Grade,
+    User, Teacher, Student, Role, Subject,
+    Enrollment, AcademicLoad, Course, Grade,
     AcademicPeriod, Schedule, Classroom, Campus,
-    GradeRecord, Activity, Attendance, Observador, AuditLog
+    GradeRecord, Activity, Attendance, Observador
 )
 from app.core.security import require_rol, hash_password
 
@@ -32,7 +32,7 @@ async def listar_usuarios(
     _=only_admin
 ):
     query = select(User)
-    role_map = {"admin": 1, "estudiante": 2, "docente": 3, "acudiente": 4}
+    role_map = {"admin": 1, "estudiante": 2, "docente": 3}
     if rol and rol in role_map:
         query = query.where(User.role_id == role_map[rol])
     if estado:
@@ -52,7 +52,7 @@ async def listar_usuarios(
 
     output = []
     for u in users:
-        role_name = {1: "admin", 2: "estudiante", 3: "docente", 4: "acudiente"}.get(u.role_id, "desconocido")
+        role_name = {1: "admin", 2: "estudiante", 3: "docente"}.get(u.role_id, "desconocido")
         output.append({
             "id": u.user_id,
             "username": u.username,
@@ -74,7 +74,7 @@ async def crear_usuario(data: dict, db: AsyncSession = Depends(get_db), _=only_a
     email = data.get("email") or data.get("correo")
     phone = data.get("telefono") or data.get("phone") or ""
     rol_str = data.get("rol") or "estudiante"
-    role_id = {"admin": 1, "estudiante": 2, "docente": 3, "acudiente": 4}.get(rol_str, 2)
+    role_id = {"admin": 1, "estudiante": 2, "docente": 3}.get(rol_str, 2)
     doc_type = data.get("tipo_documento") or data.get("document_type") or "CC"
     doc_number = data.get("numero_documento") or data.get("document_number") or ""
     middle_name = ""
@@ -155,25 +155,6 @@ async def crear_usuario(data: dict, db: AsyncSession = Depends(get_db), _=only_a
                 middle_name=middle_name, last_name=last_name,
                 second_last_name=second_last_name, email=email, phone=phone, status="active",
             ))
-    elif role_id == 4:
-        dup = await db.execute(
-            select(Guardian).where(
-                Guardian.document_type == doc_type,
-                Guardian.document_number == doc_number
-            )
-        )
-        existing = dup.scalar_one_or_none()
-        if existing:
-            if existing.user_id:
-                raise HTTPException(status_code=400, detail=f"Ya existe un acudiente con documento {doc_type} {doc_number}")
-            existing.user_id = user.user_id
-        else:
-            db.add(Guardian(
-                user_id=user.user_id, document_type=doc_type,
-                document_number=doc_number, first_name=first_name,
-                middle_name=middle_name, last_name=last_name,
-                second_last_name=second_last_name, email=email, phone=phone, status="active",
-            ))
 
     await db.flush()
     return {"mensaje": "Usuario creado", "id": user.user_id, "username": user.username}
@@ -184,7 +165,7 @@ async def obtener_usuario(user_id: int, db: AsyncSession = Depends(get_db), _=on
     u = result.scalar_one_or_none()
     if not u:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    role_name = {1: "admin", 2: "estudiante", 3: "docente", 4: "acudiente"}.get(u.role_id, "desconocido")
+    role_name = {1: "admin", 2: "estudiante", 3: "docente"}.get(u.role_id, "desconocido")
     return {
         "id": u.user_id,
         "username": u.username,
@@ -245,49 +226,6 @@ async def eliminar_usuario(user_id: int, db: AsyncSession = Depends(get_db), _=o
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     await db.delete(user)
 
-@router.patch("/usuarios/{user_id}/guardian")
-async def asignar_acudiente(user_id: int, data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
-    """Asigna un acudiente a un estudiante (via tabla student_guardian)"""
-    guardian_id = data.get("guardian_id") or data.get("acudiente_id")
-    if not guardian_id:
-        raise HTTPException(status_code=422, detail="Se requiere guardian_id o acudiente_id")
-    guardian_user = (await db.execute(select(User).where(User.user_id == int(guardian_id)))).scalar_one_or_none()
-    if not guardian_user or guardian_user.role_id != 4:
-        raise HTTPException(status_code=404, detail="Acudiente no encontrado")
-    # Buscar el perfil guardian
-    guardian = (await db.execute(select(Guardian).where(Guardian.user_id == int(guardian_id)))).scalar_one_or_none()
-    if not guardian:
-        raise HTTPException(status_code=404, detail="Perfil de acudiente no encontrado")
-    # Buscar el estudiante por su user_id
-    student = (await db.execute(select(Student).where(Student.user_id == user_id))).scalar_one_or_none()
-    if not student:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-    # Ver si ya existe el vinculo
-    parentesco = data.get("parentesco", "Tutor")
-    existing = (await db.execute(
-        select(StudentGuardian).where(
-            StudentGuardian.student_id == student.student_id,
-            StudentGuardian.guardian_id == guardian.guardian_id
-        )
-    )).scalar_one_or_none()
-    if not existing:
-        db.add(StudentGuardian(
-            student_id=student.student_id,
-            guardian_id=guardian.guardian_id,
-            parentesco=parentesco
-        ))
-        await db.flush()
-    return {"mensaje": "Acudiente asignado", "estudiante_id": student.student_id, "guardian_id": guardian.guardian_id}
-
-@router.get("/acudientes")
-async def listar_acudientes(db: AsyncSession = Depends(get_db), _=only_admin):
-    """Lista todos los acudientes registrados"""
-    result = await db.execute(
-        select(Guardian).join(User, User.user_id == Guardian.user_id).where(User.status == "active")
-    )
-    guardians = result.scalars().all()
-    return [{"guardian_id": g.guardian_id, "user_id": g.user_id, "nombre": f"{g.first_name} {g.last_name}", "documento": g.document_number} for g in guardians]
-
 # ─────────────────────────────────────────
 # MATERIAS (subjects)
 # ─────────────────────────────────────────
@@ -347,11 +285,11 @@ async def listar_matriculas(db: AsyncSession = Depends(get_db), _=only_admin):
         if student and student.user_id:
             u_result = await db.execute(select(User).where(User.user_id == student.user_id))
             user = u_result.scalar_one_or_none()
-        grado_nombre = ""
-        c_result = await db.execute(select(Grade).where(Grade.grade_id == e.grade_id))
-        grade = c_result.scalar_one_or_none()
-        if grade:
-            grado_nombre = grade.name
+        curso_nombre = ""
+        c_result = await db.execute(select(Course).where(Course.course_id == e.course_id))
+        course = c_result.scalar_one_or_none()
+        if course:
+            curso_nombre = course.name
         output.append({
             "id": e.enrollment_id,
             "usuario_id": student.user_id if student else None,
@@ -359,7 +297,7 @@ async def listar_matriculas(db: AsyncSession = Depends(get_db), _=only_admin):
             "estudiante_nombre": f"{student.first_name} {student.last_name}" if student else "N/A",
             "nombre_completo": f"{student.first_name} {student.last_name}" if student else "N/A",
             "numero_documento": student.document_number if student else "",
-            "grado": grado_nombre or f"{e.grade_id}",
+            "curso": curso_nombre or f"{e.course_id}",
             "periodo": e.period_id,
             "estado": e.status != "inactive",
         })
@@ -377,22 +315,13 @@ async def crear_matricula(data: dict, db: AsyncSession = Depends(get_db), _=only
         if not student:
             raise HTTPException(status_code=400, detail="No hay registro de estudiante para ese usuario")
         student_id = student.student_id
-    grade_id = int(data.get("grado_id") or data.get("grade_id") or 0)
-    period_id = int(data.get("periodo_id") or data.get("period_id") or 0)
-    if not period_id:
-        p_result = await db.execute(select(AcademicPeriod).where(AcademicPeriod.status == "active").limit(1))
-        active_period = p_result.scalar_one_or_none()
-        if active_period:
-            period_id = active_period.period_id
-        else:
-            p_result = await db.execute(select(AcademicPeriod).limit(1))
-            first_period = p_result.scalar_one_or_none()
-            period_id = first_period.period_id if first_period else 1
+    course_id = int(data.get("curso_id") or data.get("course_id") or data.get("grado") or 0)
+    period_id = int(data.get("periodo_id") or data.get("period_id") or 5)
     if student_id:
         student_id = int(student_id)
     enrollment = Enrollment(
         student_id=student_id,
-        grade_id=grade_id,
+        course_id=course_id,
         period_id=period_id,
         enrollment_date=date.today(),
         status=data.get("status", "active"),
@@ -428,8 +357,8 @@ async def listar_carga(db: AsyncSession = Depends(get_db), _=only_admin):
         teacher = t_result.scalar_one_or_none()
         s_result = await db.execute(select(Subject).where(Subject.subject_id == l.subject_id))
         subject = s_result.scalar_one_or_none()
-        c_result = await db.execute(select(Grade).where(Grade.grade_id == l.grade_id))
-        grade = c_result.scalar_one_or_none()
+        c_result = await db.execute(select(Course).where(Course.course_id == l.course_id))
+        course = c_result.scalar_one_or_none()
         sched_result = await db.execute(
             select(Schedule).where(Schedule.academic_load_id == l.academic_load_id)
         )
@@ -452,7 +381,7 @@ async def listar_carga(db: AsyncSession = Depends(get_db), _=only_admin):
             "materia": subject.name if subject else "N/A",
             "materia_nombre": subject.name if subject else "N/A",
             "horario": horario_str,
-            "grado": grade.name if grade else "N/A",
+            "curso": course.name if course else "N/A",
             "salon": salon_str,
         })
     return output
@@ -460,32 +389,23 @@ async def listar_carga(db: AsyncSession = Depends(get_db), _=only_admin):
 @router.post("/carga-academica", status_code=status.HTTP_201_CREATED)
 async def crear_carga(data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
     teacher_id = int(data.get("docente_id") or data.get("teacher_id") or 0)
-    grade_id = int(data.get("grado_id") or data.get("grade_id") or 0)
+    course_id = int(data.get("curso_id") or data.get("course_id") or 0)
     subject_id = int(data.get("materia_id") or data.get("subject_id") or 0)
-    period_id = int(data.get("periodo_id") or data.get("period_id") or 0)
-    if not period_id:
-        p_result = await db.execute(select(AcademicPeriod).where(AcademicPeriod.status == "active").limit(1))
-        active_period = p_result.scalar_one_or_none()
-        if active_period:
-            period_id = active_period.period_id
-        else:
-            p_result = await db.execute(select(AcademicPeriod).limit(1))
-            first_period = p_result.scalar_one_or_none()
-            period_id = first_period.period_id if first_period else 1
+    period_id = int(data.get("periodo_id") or data.get("period_id") or 5)
     classroom_id = int(data.get("classroom_id") or 1)
     hora_inicio = data.get("hora_inicio") or "06:00"
     hora_fin = data.get("hora_fin") or "07:00"
     dias = data.get("dias") or ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 
     load = AcademicLoad(
-        teacher_id=teacher_id, grade_id=grade_id,
+        teacher_id=teacher_id, course_id=course_id,
         subject_id=subject_id, period_id=period_id,
     )
     db.add(load)
     try:
         await db.flush()
     except IntegrityError:
-        raise HTTPException(status_code=409, detail="Esa combinación de docente, grado, materia y periodo ya existe")
+        raise HTTPException(status_code=409, detail="Esa combinación de docente, curso, materia y periodo ya existe")
 
     hi = time.fromisoformat(hora_inicio)
     hf = time.fromisoformat(hora_fin)
@@ -543,7 +463,7 @@ async def listar_horarios(_=only_admin):
 async def listar_roles(db: AsyncSession = Depends(get_db), _=only_admin):
     result = await db.execute(select(Role))
     roles = result.scalars().all()
-    role_map = {"Administrativo": "admin", "Docente": "docente", "Estudiante": "estudiante", "Acudiente": "acudiente"}
+    role_map = {"Administrativo": "admin", "Docente": "docente", "Estudiante": "estudiante"}
     return [{"role_id": r.role_id, "nombre": r.name, "rol": role_map.get(r.name, r.name.lower())} for r in roles]
 
 @router.get("/docentes")
@@ -555,76 +475,74 @@ async def listar_docentes(db: AsyncSession = Depends(get_db), _=only_admin):
 @router.get("/grados")
 async def listar_grados(db: AsyncSession = Depends(get_db), _=only_admin):
     result = await db.execute(select(Grade))
-    grades = result.scalars().all()
-    return [{
-        "grade_id": g.grade_id,
-        "nombre": g.name,
-        "education_level": g.education_level,
-        "capacidad_maxima": g.maximum_capacity,
-        "anio": g.academic_year,
-        "estado": g.status == "active"
-    } for g in grades]
+    return result.scalars().all()
 
-@router.get("/grados-capacidad")
-async def listar_grados_capacidad(db: AsyncSession = Depends(get_db), _=only_admin):
-    result = await db.execute(select(Grade))
-    grades = result.scalars().all()
+@router.get("/cursos")
+async def listar_cursos(db: AsyncSession = Depends(get_db), _=only_admin):
+    result = await db.execute(select(Course))
+    courses = result.scalars().all()
+    return [{"course_id": c.course_id, "nombre": c.name, "grade_id": c.grade_id, "capacidad_maxima": c.maximum_capacity, "anio": c.academic_year, "estado": c.status == "active"} for c in courses]
+
+@router.get("/cursos-capacidad")
+async def listar_cursos_capacidad(db: AsyncSession = Depends(get_db), _=only_admin):
+    result = await db.execute(select(Course))
+    courses = result.scalars().all()
     output = []
-    for g in grades:
+    for c in courses:
         count_result = await db.execute(
             select(func.count(Enrollment.enrollment_id)).where(
-                Enrollment.grade_id == g.grade_id,
+                Enrollment.course_id == c.course_id,
                 Enrollment.status == "completed"
             )
         )
         matriculados = count_result.scalar() or 0
         output.append({
-            "grade_id": g.grade_id,
-            "nombre": g.name,
-            "capacidad_maxima": g.maximum_capacity,
+            "course_id": c.course_id,
+            "nombre": c.name,
+            "capacidad_maxima": c.maximum_capacity,
             "matriculados": matriculados,
-            "disponible": g.maximum_capacity - matriculados,
+            "disponible": c.maximum_capacity - matriculados,
         })
     return output
 
-@router.post("/grados", status_code=status.HTTP_201_CREATED)
-async def crear_grado(data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
-    grade = Grade(
+@router.post("/cursos", status_code=status.HTTP_201_CREATED)
+async def crear_curso(data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
+    course = Course(
         name=data.get("nombre") or data.get("name") or "",
-        education_level=data.get("education_level") or data.get("nivel_educativo") or "Básica",
+        grade_id=int(data.get("grade_id", 1)),
         campus_id=int(data.get("campus_id", 1)),
         maximum_capacity=int(data.get("maximum_capacity", 40)),
         academic_year=int(data.get("academic_year", 2026)),
     )
-    db.add(grade)
+    db.add(course)
     await db.flush()
-    await db.refresh(grade)
-    return {"grade_id": grade.grade_id, "nombre": grade.name}
+    await db.refresh(course)
+    return {"course_id": course.course_id, "nombre": course.name}
 
-@router.put("/grados/{grade_id}")
-async def editar_grado(grade_id: int, data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
-    result = await db.execute(select(Grade).where(Grade.grade_id == grade_id))
-    grade = result.scalar_one_or_none()
-    if not grade:
-        raise HTTPException(status_code=404, detail="Grado no encontrado")
+@router.put("/cursos/{course_id}")
+async def editar_curso(course_id: int, data: dict, db: AsyncSession = Depends(get_db), _=only_admin):
+    result = await db.execute(select(Course).where(Course.course_id == course_id))
+    course = result.scalar_one_or_none()
+    if not course:
+        raise HTTPException(status_code=404, detail="Curso no encontrado")
     if "nombre" in data or "name" in data:
-        grade.name = data.get("nombre") or data.get("name")
+        course.name = data.get("nombre") or data.get("name")
     if "maximum_capacity" in data:
-        grade.maximum_capacity = int(data["maximum_capacity"])
+        course.maximum_capacity = int(data["maximum_capacity"])
     if "academic_year" in data:
-        grade.academic_year = int(data["academic_year"])
-    if "education_level" in data:
-        grade.education_level = str(data["education_level"])
+        course.academic_year = int(data["academic_year"])
+    if "grade_id" in data:
+        course.grade_id = int(data["grade_id"])
     await db.flush()
-    return {"grade_id": grade.grade_id, "nombre": grade.name}
+    return {"course_id": course.course_id, "nombre": course.name}
 
-@router.delete("/grados/{grade_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def eliminar_grado(grade_id: int, db: AsyncSession = Depends(get_db), _=only_admin):
-    result = await db.execute(select(Grade).where(Grade.grade_id == grade_id))
-    grade = result.scalar_one_or_none()
-    if not grade:
-        raise HTTPException(status_code=404, detail="Grado no encontrado")
-    await db.delete(grade)
+@router.delete("/cursos/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_curso(course_id: int, db: AsyncSession = Depends(get_db), _=only_admin):
+    result = await db.execute(select(Course).where(Course.course_id == course_id))
+    course = result.scalar_one_or_none()
+    if not course:
+        raise HTTPException(status_code=404, detail="Curso no encontrado")
+    await db.delete(course)
 
 @router.get("/salones")
 async def listar_salones(db: AsyncSession = Depends(get_db), _=only_admin):
@@ -671,35 +589,4 @@ async def reportes(db: AsyncSession = Depends(get_db), _=only_admin):
         "tasa_aprobacion": round((aprobadas / total * 100), 2) if total > 0 else 0,
         "total_ausencias": total_ausencias,
         "observador": tipo_map,
-    }
-
-# ─────────────────────────────────────────
-# AUDITORIA
-# ─────────────────────────────────────────
-@router.get("/auditoria")
-async def listar_auditoria(
-    pagina: int = 1,
-    limite: int = 50,
-    db: AsyncSession = Depends(get_db),
-    _=only_admin
-):
-    offset = (pagina - 1) * limite
-    total = (await db.execute(select(func.count(AuditLog.id_audit)))).scalar() or 0
-    result = await db.execute(
-        select(AuditLog).order_by(AuditLog.operation_timestamp.desc()).offset(offset).limit(limite)
-    )
-    registros = result.scalars().all()
-    return {
-        "total": total,
-        "pagina": pagina,
-        "limite": limite,
-        "registros": [{
-            "id": r.id_audit,
-            "usuario": r.user_name or r.db_user or "Sistema",
-            "accion": r.action or r.action_type or "",
-            "tabla": r.table_name or r.affected_table or "",
-            "detalle": r.new_value or r.old_value or "",
-            "fecha": str(r.operation_timestamp) if r.operation_timestamp else "",
-            "ip": r.ip_address or "",
-        } for r in registros]
     }

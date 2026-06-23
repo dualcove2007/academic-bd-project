@@ -7,7 +7,7 @@
 -- -------------------------------------------------------------
 -- TABLA: audit_log
 -- -------------------------------------------------------------
-CREATE TABLE academic.audit_log (
+CREATE TABLE audit_log (
     id_audit            BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     db_user             VARCHAR(180)    NOT NULL,
     action              VARCHAR(10)     NOT NULL
@@ -23,7 +23,7 @@ CREATE TABLE academic.audit_log (
 );
 
 -- Índices para consultas de auditoría frecuentes
-CREATE INDEX idx_audit_table   ON academic.audit_log (table_name);
-CREATE INDEX idx_audit_ts      ON academic.audit_log (operation_timestamp DESC);
-CREATE INDEX idx_audit_user    ON academic.audit_log (db_user);
-CREATE INDEX idx_audit_action  ON academic.audit_log (action);
+CREATE INDEX idx_audit_table   ON audit_log (table_name);
+CREATE INDEX idx_audit_ts      ON audit_log (operation_timestamp DESC);
+CREATE INDEX idx_audit_user    ON audit_log (db_user);
+CREATE INDEX idx_audit_action  ON audit_log (action);

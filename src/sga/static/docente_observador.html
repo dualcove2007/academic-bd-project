@@ -392,9 +392,6 @@
                 
                 <!-- Columna Izquierda: Listado de Estudiantes -->
                 <div class="students-sidebar-card">
-                    <select class="type-select" id="grado-filter" style="width:100%;margin-bottom:6px;">
-                        <option value="">TODOS LOS GRADOS</option>
-                    </select>
                     <input type="text" class="search-student-input" placeholder="Buscar estudiante...">
                     
                     <div class="students-list-container" id="students-list">
@@ -454,27 +451,34 @@
     }
     let estudiantes = [];
     let selectedEstudianteId = null;
-
-    function cargarGrados() {
-        apiGet('/docentes/observador/grados').then(data => {
-            const sel = document.getElementById('grado-filter');
-            (data || []).forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g.grade_id;
-                opt.textContent = g.nombre;
-                sel.appendChild(opt);
+    function cargarEstudiantes() {
+        apiGet('/docentes/mi-carga').then(data => {
+            const seen = {};
+            (data || []).forEach(item => {
+                if (item.estudiantes) {
+                    item.estudiantes.forEach(est => {
+                        if (!seen[est.id]) {
+                            seen[est.id] = true;
+                            estudiantes.push({ id: est.id, nombre: est.nombre || est.nombres + ' ' + (est.apellidos || '') });
+                        }
+                    });
+                }
             });
+            if (estudiantes.length === 0 && data && data.length > 0) {
+                apiGet('/docentes/asistencia/' + data[0].id).then(asist => {
+                    (asist || []).forEach(a => {
+                        if (a.estudiante_id && !seen[a.estudiante_id]) {
+                            seen[a.estudiante_id] = true;
+                            estudiantes.push({ id: a.estudiante_id, nombre: a.estudiante_nombre || 'Estudiante #' + a.estudiante_id });
+                        }
+                    });
+                    renderStudentList();
+                }).catch(() => renderStudentList());
+            } else {
+                renderStudentList();
+            }
         }).catch(() => {});
     }
-
-    function cargarEstudiantes(gradoId) {
-        const url = gradoId ? '/docentes/observador/estudiantes?grado_id=' + gradoId : '/docentes/observador/estudiantes';
-        apiGet(url).then(data => {
-            estudiantes = data || [];
-            renderStudentList(document.querySelector('.search-student-input').value);
-        }).catch(() => {});
-    }
-
     function renderStudentList(filter) {
         const container = document.getElementById('students-list');
         container.innerHTML = '';
@@ -482,7 +486,7 @@
         list.forEach(est => {
             const div = document.createElement('div');
             div.className = 'student-list-item' + (selectedEstudianteId === est.id ? ' selected' : '');
-            div.textContent = est.nombre + ' (' + (est.grado || 'Sin grado') + ')';
+            div.textContent = est.nombre;
             div.onclick = function() { seleccionarEstudiante(est.id); };
             container.appendChild(div);
         });
@@ -549,13 +553,8 @@
         }).catch(() => {});
     }
 
-    document.getElementById('grado-filter').addEventListener('change', function() {
-        cargarEstudiantes(this.value || null);
-    });
-
     cargarPeriodos();
-    cargarGrados();
-    cargarEstudiantes(null);
+    cargarEstudiantes();
 </script>
 </body>
 </html>

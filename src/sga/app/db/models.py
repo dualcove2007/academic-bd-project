@@ -52,7 +52,17 @@ class Campus(Base):
 
     institution: Mapped["Institution"] = relationship()
     classrooms: Mapped[list["Classroom"]] = relationship(back_populates="campus")
-    grades: Mapped[list["Grade"]] = relationship(back_populates="campus")
+    courses: Mapped[list["Course"]] = relationship(back_populates="campus")
+
+# ─────────────────────────────────────────
+# GRADES (grade levels)
+# ─────────────────────────────────────────
+class Grade(Base):
+    __tablename__ = "grades"
+
+    grade_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100))
+    education_level: Mapped[str] = mapped_column(String(100))
 
 # ─────────────────────────────────────────
 # CLASSROOMS
@@ -83,20 +93,20 @@ class AcademicPeriod(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")
 
 # ─────────────────────────────────────────
-# GRADES (Primero → Once)
+# COURSES (course sections per grade)
 # ─────────────────────────────────────────
-class Grade(Base):
-    __tablename__ = "grades"
+class Course(Base):
+    __tablename__ = "courses"
 
-    grade_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    course_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
     campus_id: Mapped[int] = mapped_column(ForeignKey("campuses.campus_id"))
     name: Mapped[str] = mapped_column(String(180))
-    education_level: Mapped[str] = mapped_column(String(100), default="Básica")
     maximum_capacity: Mapped[int] = mapped_column(Integer)
     academic_year: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
-    campus: Mapped["Campus"] = relationship(back_populates="grades")
+    campus: Mapped["Campus"] = relationship(back_populates="courses")
 
 # ─────────────────────────────────────────
 # SUBJECTS
@@ -138,7 +148,6 @@ class User(Base):
     role: Mapped["Role"] = relationship(back_populates="users")
     teacher: Mapped["Teacher"] = relationship(back_populates="user", uselist=False)
     student: Mapped["Student"] = relationship(back_populates="user", uselist=False)
-    guardian: Mapped["Guardian"] = relationship(back_populates="user", uselist=False)
 
 # ─────────────────────────────────────────
 # TEACHERS
@@ -184,42 +193,6 @@ class Student(Base):
 
     user: Mapped["User"] = relationship(back_populates="student")
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="student")
-    guardians: Mapped[list["StudentGuardian"]] = relationship(back_populates="student")
-
-# ─────────────────────────────────────────
-# GUARDIANS (acudientes)
-# ─────────────────────────────────────────
-class Guardian(Base):
-    __tablename__ = "guardians"
-
-    guardian_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=True, unique=True)
-    document_type: Mapped[str] = mapped_column(String(30))
-    document_number: Mapped[str] = mapped_column(String(50))
-    first_name: Mapped[str] = mapped_column(String(100))
-    middle_name: Mapped[str] = mapped_column(String(100), nullable=True)
-    last_name: Mapped[str] = mapped_column(String(100))
-    second_last_name: Mapped[str] = mapped_column(String(100), nullable=True)
-    phone: Mapped[str] = mapped_column(String(30), nullable=True)
-    email: Mapped[str] = mapped_column(String(180), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="active")
-
-    user: Mapped["User"] = relationship(back_populates="guardian")
-    student_links: Mapped[list["StudentGuardian"]] = relationship(back_populates="guardian")
-
-# ─────────────────────────────────────────
-# STUDENT - GUARDIAN (junction table)
-# ─────────────────────────────────────────
-class StudentGuardian(Base):
-    __tablename__ = "student_guardian"
-
-    student_guardian_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    student_id: Mapped[int] = mapped_column(ForeignKey("students.student_id"))
-    guardian_id: Mapped[int] = mapped_column(ForeignKey("guardians.guardian_id"))
-    parentesco: Mapped[str] = mapped_column(String(50), default="Tutor")
-
-    student: Mapped["Student"] = relationship(back_populates="guardians")
-    guardian: Mapped["Guardian"] = relationship(back_populates="student_links")
 
 # ─────────────────────────────────────────
 # ENROLLMENTS
@@ -229,7 +202,7 @@ class Enrollment(Base):
 
     enrollment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("students.student_id"))
-    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.course_id"))
     period_id: Mapped[int] = mapped_column(ForeignKey("academic_periods.period_id"))
     enrollment_date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20), default="active")
@@ -245,7 +218,7 @@ class AcademicLoad(Base):
 
     academic_load_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.teacher_id"))
-    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.course_id"))
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.subject_id"))
     period_id: Mapped[int] = mapped_column(ForeignKey("academic_periods.period_id"))
 
@@ -331,21 +304,3 @@ class Observador(Base):
     descripcion: Mapped[str] = mapped_column(Text)
     fecha: Mapped[datetime] = mapped_column(DateTime)
     periodo: Mapped[str] = mapped_column(String(50))
-
-# ─────────────────────────────────────────
-# AUDIT LOG
-# ─────────────────────────────────────────
-class AuditLog(Base):
-    __tablename__ = "audit_log"
-
-    id_audit: Mapped[int] = mapped_column("id_audit", Integer, primary_key=True, autoincrement=True)
-    db_user: Mapped[str] = mapped_column(String(100), nullable=True)
-    action: Mapped[str] = mapped_column(String(200), nullable=True)
-    table_name: Mapped[str] = mapped_column(String(100), nullable=True)
-    affected_table: Mapped[str] = mapped_column(String(100), nullable=True)
-    action_type: Mapped[str] = mapped_column(String(50), nullable=True)
-    operation_timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    old_value: Mapped[str] = mapped_column(Text, nullable=True)
-    new_value: Mapped[str] = mapped_column(Text, nullable=True)
-    user_name: Mapped[str] = mapped_column(String(200), nullable=True)
-    ip_address: Mapped[str] = mapped_column(String(50), nullable=True)
