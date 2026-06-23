@@ -178,7 +178,7 @@
                         });
                         setAuth(data.access_token, { nombre: data.nombre, rol: data.rol });
 
-                        const redir = { admin: 'admin_inicio.html', docente: 'docente_inicio.html', estudiante: 'estudiante_inicio.html' };
+                        const redir = { admin: 'admin_inicio.html', docente: 'docente_inicio.html', estudiante: 'estudiante_inicio.html', acudiente: 'acudiente_inicio.html' };
                         window.location.href = redir[data.rol] || 'login.html';
                     } catch (err) {
                         errorDiv.textContent = err.message;

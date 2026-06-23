@@ -358,7 +358,7 @@
                     <select class="periodo-select">
                         <option>[PERIODO ACTUAL]</option>
                     </select>
-                    <button class="btn-descargar">DESCARGAR PDF</button>
+                    <button class="btn-descargar" onclick="descargarPDF()">DESCARGAR PDF</button>
                 </div>
 
                 <div class="table-card-wrapper">
@@ -488,6 +488,7 @@
             const url = periodo ? `/estudiantes/boletin?periodo=${encodeURIComponent(periodo)}` : '/estudiantes/boletin';
             const data = await apiGet(url);
             if (!data) return;
+            boletinData = data;
 
             tbody.innerHTML = '';
             if (data.materias) {
@@ -546,6 +547,88 @@
     }
 
     selectPeriodo.addEventListener('change', () => loadBoletin(selectPeriodo.value));
+
+    function descargarPDF() {
+        if (!boletinData || !boletinData.materias) { alert('Cargue el boletin primero'); return; }
+        const m = boletinData;
+        const user = getUser();
+        const promedio = m.resumen ? m.resumen.promedio : 'N.N';
+        const grado = document.querySelector('.periodo-select')?.value || 'N/A';
+        const totalFallas = m.materias.reduce((s, mat) => s + parseInt(mat.fallas || 0), 0);
+
+        let filas = '';
+        m.materias.forEach(mat => {
+            const nivel = mat.nivel_desempeno || 'Superior';
+            const clase = nivel.toLowerCase().includes('superior') || nivel.toLowerCase().includes('alto') ? 'alto' :
+                          nivel.toLowerCase().includes('basico') || nivel.toLowerCase().includes('básico') ? 'medio' : 'bajo';
+            filas += `<tr>
+                <td>${mat.materia}</td>
+                <td class="text-center">${mat.nota_final != null ? mat.nota_final : 'N.N'}</td>
+                <td class="text-center ${clase}">${nivel}</td>
+            </tr>`;
+        });
+
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Boletin Academico</title>
+        <style>
+            @page { size: 216mm 330mm; margin: 15mm; }
+            body { font-family: Arial, sans-serif; color: #1e293b; font-size: 10.5pt; }
+            .header-table { width:100%; border-collapse:collapse; background:#0f172a; color:#fff; border-radius:6px; margin-bottom:20px; }
+            .header-table td { border:none; padding:15px 20px; vertical-align:middle; }
+            .logo-cell { width:90px; background:#fff; border-radius:6px 0 0 6px; padding:10px 15px !important; text-align:center; }
+            .colegio-info { text-align:center; }
+            .colegio-info h1 { font-size:18pt; margin:0 0 4px 0; text-transform:uppercase; color:#f8fafc; }
+            .colegio-info h2 { font-size:11pt; margin:0 0 4px 0; color:#cbd5e1; }
+            .info-table { width:100%; border-collapse:collapse; margin-bottom:22px; border:1px solid #e2e8f0; }
+            .info-table td { border:1px solid #e2e8f0; padding:10px 14px; font-size:10pt; background:#f8fafc; }
+            .info-table td strong { color:#0f172a; text-transform:uppercase; font-size:8.5pt; display:inline-block; width:110px; }
+            .grades-table { width:100%; border-collapse:collapse; margin-bottom:25px; }
+            .grades-table th { background:#1e3a8a; color:#fff; text-transform:uppercase; font-size:9.5pt; border:1px solid #1e3a8a; padding:11px 14px; }
+            .grades-table td { border:1px solid #cbd5e1; padding:10px 14px; font-size:10pt; }
+            .grades-table tr:nth-child(even) { background:#f8fafc; }
+            .text-center { text-align:center; }
+            .bajo { background:#fee2e2 !important; color:#991b1b !important; font-weight:700; }
+            .medio { background:#fef3c7 !important; color:#92400e !important; font-weight:700; }
+            .alto { background:#dcfce7 !important; color:#166534 !important; font-weight:700; }
+            .footer-table { width:100%; border-collapse:collapse; margin-top:10px; }
+            .footer-table td { border:none; vertical-align:top; padding:0; }
+            .promedio-box { border:2px solid #1e3a8a; background:#eff6ff; padding:16px 10px; text-align:center; border-radius:6px; }
+            .promedio-box .titulo { font-size:8.5pt; text-transform:uppercase; font-weight:700; color:#1e3a8a; }
+            .promedio-box .nota { font-size:26pt; font-weight:800; color:#1d4ed8; }
+            .fallas-box { border:2px solid #475569; background:#f1f5f9; padding:16px 10px; text-align:center; border-radius:6px; }
+            .fallas-box .titulo { font-size:8.5pt; text-transform:uppercase; font-weight:700; color:#475569; }
+            .fallas-box .num { font-size:26pt; font-weight:800; color:#1e293b; }
+            .obs-box { border:1px solid #cbd5e1; padding:14px 18px; background:#f8fafc; min-height:98px; border-radius:6px; border-left:4px solid #1e3a8a; }
+            .obs-box h3 { margin:0 0 6px 0; font-size:9.5pt; text-transform:uppercase; color:#0f172a; border-bottom:1px solid #e2e8f0; padding-bottom:4px; }
+            .obs-box p { margin:0; font-size:9.5pt; color:#475569; font-style:italic; }
+            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style></head><body onload="window.print()">
+        <table class="header-table"><tr>
+            <td class="logo-cell"><div style="width:75px;height:75px;background:#1e3a8a;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:800;margin:0 auto;">SGA</div></td>
+            <td class="colegio-info"><h1>Institucion Educativa DUALCOVE</h1><h2>Boletin Informativo de Rendimiento Academico</h2><div style="font-size:8.5pt;color:#94a3b8;text-transform:uppercase;font-weight:600;">Republica de Colombia - Ministerio de Educacion Nacional</div></td>
+        </tr></table>
+        <table class="info-table"><tr>
+            <td style="width:55%;"><strong>Estudiante:</strong> ${user?.nombre || 'N/A'}</td>
+            <td style="width:45%;"><strong>Codigo / ID:</strong> ${user?.id || 'N/A'}</td>
+        </tr><tr>
+            <td><strong>Grado:</strong> ${grado}</td>
+            <td><strong>Periodo / Ano:</strong> ${new Date().getFullYear()}</td>
+        </tr></table>
+        <table class="grades-table"><thead><tr>
+            <th style="width:50%;text-align:left;">Asignatura / Materia</th>
+            <th class="text-center" style="width:25%;">Calificacion</th>
+            <th class="text-center" style="width:25%;">Desempeno</th>
+        </tr></thead><tbody>${filas}</tbody></table>
+        <table class="footer-table"><tr>
+            <td style="width:22%;padding-right:12px;"><div class="promedio-box"><div class="titulo">Promedio General</div><div class="nota">${promedio}</div></div></td>
+            <td style="width:22%;padding-right:18px;"><div class="fallas-box"><div class="titulo">Total Fallas</div><div class="num">${totalFallas}</div></div></td>
+            <td style="width:56%;"><div class="obs-box"><h3>Observaciones del Titular</h3><p>El estudiante debe cumplir con sus compromisos academicos y mantener un buen comportamiento.</p></div></td>
+        </tr></table>
+        </body></html>`;
+
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+    }
 
     loadPeriodos();
 </script>

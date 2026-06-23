@@ -349,7 +349,13 @@
                 const materias = notas.filter(n => n.promedio != null);
                 if (materias.length > 0) {
                     const prom = materias.reduce((s, m) => s + Number(m.promedio), 0) / materias.length;
-                    document.querySelectorAll('.card-main-value')[0].textContent = prom.toFixed(1);
+                    const promRedondeado = prom.toFixed(1);
+                    document.querySelectorAll('.card-main-value')[0].textContent = promRedondeado;
+                    let desempeno = 'Superior';
+                    if (prom < 3.0) desempeno = 'Bajo';
+                    else if (prom < 4.0) desempeno = 'Basico';
+                    else if (prom < 4.6) desempeno = 'Alto';
+                    document.querySelectorAll('.card-footer')[0].textContent = 'Desempeno ' + desempeno;
                 }
             }
         } catch (e) { console.error('Error cargando notas:', e); }
@@ -363,6 +369,22 @@
                 document.querySelectorAll('.card-footer')[1].textContent = `${just} justificadas, ${sinJust} sin excusa`;
             }
         } catch (e) { console.error('Error cargando asistencia:', e); }
+
+        try {
+            const observador = await apiGet('/estudiantes/observador');
+            if (observador && observador.length > 0) {
+                const ultimo = observador[observador.length - 1];
+                document.querySelectorAll('.card-main-value')[2].textContent = ultimo.tipo || 'Sin novedades';
+                const fecha = ultimo.fecha ? new Date(ultimo.fecha) : null;
+                const hace = fecha ? Math.round((Date.now() - fecha.getTime()) / 3600000) : null;
+                document.querySelectorAll('.card-footer')[2].textContent = fecha
+                    ? 'Reportado: ' + (hace > 24 ? Math.round(hace / 24) + ' dias' : hace + ' horas')
+                    : 'Sin comunicados';
+            } else {
+                document.querySelectorAll('.card-main-value')[2].textContent = 'Sin novedades';
+                document.querySelectorAll('.card-footer')[2].textContent = 'No hay anotaciones';
+            }
+        } catch (e) { console.error('Error cargando observador:', e); }
     }
 
     loadInicio();

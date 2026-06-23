@@ -339,7 +339,7 @@
                 <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
                 <div class="menu-item active" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
                 <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
-                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_grados.html'">&bull; GRADOS</div>
                 <div class="menu-item" onclick="window.location='admin_carga_academica.html'">&bull; CARGA ACADEMICA Y HORARIOS</div>
                 <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
             </div>
@@ -371,7 +371,7 @@
                 <div class="top-filter-bar">
                     <div class="filters-left-group">
 <select class="custom-select select-grado">
-    <option value="">MATRICULAR EN GRADO: (seleccione)</option>
+    <option value="">MATRICULAR EN CURSO: (seleccione)</option>
 </select>
 
                         <div class="info-cupos-block" id="infoCupos">
@@ -410,15 +410,15 @@
     let todosMatriculados = [];
     let todosSinMatricula = [];
 
-    async function loadCursos() {
+    async function loadGrados() {
         try {
-            const cursos = await apiGet('/admin/cursos');
+            const grados = await apiGet('/admin/grados');
             const selectGrado = document.querySelector('.select-grado');
             selectGrado.innerHTML = '<option value="">MATRICULAR EN GRADO: (seleccione)</option>';
-            cursos.forEach(c => {
+            grados.forEach(g => {
                 const opt = document.createElement('option');
-                opt.value = c.course_id;
-                opt.textContent = c.nombre;
+                opt.value = g.grade_id;
+                opt.textContent = g.nombre;
                 selectGrado.appendChild(opt);
             });
         } catch (e) { console.error(e); }
@@ -426,7 +426,7 @@
 
     async function loadCapacidad() {
         try {
-            const data = await apiGet('/admin/cursos-capacidad');
+            const data = await apiGet('/admin/grados-capacidad');
             const selectGrado = document.querySelector('.select-grado');
             const infoDiv = document.getElementById('infoCupos');
             selectGrado.addEventListener('change', function() {
@@ -435,9 +435,9 @@
                     infoDiv.innerHTML = 'Cupo disponible: — |<br> Director de Grupo: —';
                     return;
                 }
-                const curso = data.find(c => String(c.course_id) === selected);
-                if (curso) {
-                    infoDiv.innerHTML = `Cupo disponible: ${curso.disponible} / ${curso.capacidad_maxima} estudiantes |<br> Director de Grupo: —`;
+                const grado = data.find(g => String(g.grade_id) === selected);
+                if (grado) {
+                    infoDiv.innerHTML = `Cupo disponible: ${grado.disponible} / ${grado.capacidad_maxima} estudiantes |<br> Director de Grupo: —`;
                 }
             });
         } catch (e) { console.error('Error cargando capacidad:', e); }
@@ -450,7 +450,7 @@
             const uid = m.usuario_id || m.estudiante_id;
             const nombre = m.nombre_completo || '(Sin nombre)';
             const documento = m.numero_documento || uid;
-            const gradoActual = m.curso || '—';
+            const gradoActual = m.grado || '—';
             const estado = m.estado ? 'FINALIZADA' : 'SIN ASIGNAR';
             const estadoClass = m.estado ? 'status-oval-green' : 'status-oval-gray';
             html += `<tr>
@@ -494,7 +494,7 @@
         }
     }
 
-    loadCursos().then(() => { loadCapacidad(); loadMatriculas(); }).catch(() => loadMatriculas());
+    loadGrados().then(() => { loadCapacidad(); loadMatriculas(); }).catch(() => loadMatriculas());
 
     function toggleCheckbox(el) {
         if (el.classList.contains('checked')) {
@@ -528,7 +528,7 @@
         if (!checks.length) { alert('Seleccione al menos un estudiante'); return; }
         if (!confirm(`¿Finalizar matrícula de ${checks.length} estudiante(s)?`)) return;
 
-        const gradoSel = document.querySelector('.select-grado').value;
+        const selectValue = document.querySelector('.select-grado').value;
         for (const el of checks) {
             const mid = el.dataset.matriculaId;
             const uid = el.dataset.userId;
@@ -538,8 +538,8 @@
                 } else if (uid) {
                     const body = {
                         usuario_id: parseInt(uid),
-                        grado: parseInt(gradoSel) || 1,
-                        status: 'completed'
+                        grado_id: parseInt(selectValue) || 0,
+                        status: 'active'
                     };
                     const resp = await fetch('/api/admin/matriculas', {
                         method: 'POST',

@@ -7,7 +7,7 @@ from app.db.database import get_db
 from app.db.models import (
     Student, Enrollment, AcademicLoad, Schedule, Attendance,
     GradeRecord, Activity, Observador, Subject, User,
-    Course, AcademicPeriod, Teacher, Classroom, Grade
+    Grade, AcademicPeriod, Teacher, Classroom
 )
 from app.core.security import require_rol
 
@@ -19,6 +19,35 @@ async def get_student_by_user(db: AsyncSession, user_id: int):
     if not student:
         raise HTTPException(status_code=404, detail="Estudiante no encontrado")
     return student
+
+
+def _slot_index(t):
+    h = t.hour + t.minute / 60
+    if 6 <= h < 7: return 0
+    if 7 <= h < 8: return 1
+    if 8 <= h < 9: return 2
+    if 9 <= h < 10: return 3
+    if 10 <= h < 11: return 4
+    if 11 <= h < 12: return 5
+    return 6
+
+
+TIME_SLOTS = [
+    ("6:00-7:00", 6, 0, 7, 0),
+    ("7:00-8:00", 7, 0, 8, 0),
+    ("8:00-9:00", 8, 0, 9, 0),
+    ("9:00-10:00", 9, 0, 10, 0),
+    ("10:00-11:00", 10, 0, 11, 0),
+    ("11:00-12:00", 11, 0, 12, 0),
+    ("12:00-13:00", 12, 0, 13, 0),
+]
+DAY_MAP = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4}
+DAY_KEYS = ["lunes", "martes", "miercoles", "jueves", "viernes"]
+JUSTIFICADA_STATUSES = {"presente", "present", "excusado", "excused", "justified", "justificada"}
+AUSENTE_STATUSES = {"ausente", "absent"}
+TARDE_STATUSES = {"tarde", "late"}
+STATUS_ES_FALTA = AUSENTE_STATUSES | TARDE_STATUSES
+
 
 # ─────────────────────────────────────────
 # MATRÍCULA
@@ -39,18 +68,21 @@ async def mi_matricula(
     if not enrollment:
         raise HTTPException(status_code=404, detail="No tienes matrícula activa")
 
-    course = await db.execute(select(Course).where(Course.course_id == enrollment.course_id))
-    course = course.scalar_one_or_none()
-    period = await db.execute(select(AcademicPeriod).where(AcademicPeriod.period_id == enrollment.period_id))
-    period = period.scalar_one_or_none()
+    grade = (await db.execute(
+        select(Grade).where(Grade.grade_id == enrollment.grade_id)
+    )).scalar_one_or_none()
+    period = (await db.execute(
+        select(AcademicPeriod).where(AcademicPeriod.period_id == enrollment.period_id)
+    )).scalar_one_or_none()
 
     return {
         "id": enrollment.enrollment_id,
         "periodo": period.name if period else str(enrollment.period_id),
-        "grado": course.name if course else "",
+        "grado": grade.name if grade else "",
         "sede": "Sede Principal",
         "estado": enrollment.status == "active",
     }
+
 
 # ─────────────────────────────────────────
 # HORARIO
@@ -71,50 +103,59 @@ async def mi_horario(
     if not enrollment:
         raise HTTPException(status_code=404, detail="No tienes matrícula activa")
 
-    course = await db.execute(select(Course).where(Course.course_id == enrollment.course_id))
-    course = course.scalar_one_or_none()
+    grade = (await db.execute(
+        select(Grade).where(Grade.grade_id == enrollment.grade_id)
+    )).scalar_one_or_none()
 
-    load_result = await db.execute(
-        select(AcademicLoad).where(AcademicLoad.course_id == course.course_id)
-    )
-    loads = load_result.scalars().all()
+    loads = (await db.execute(
+        select(AcademicLoad).where(AcademicLoad.grade_id == grade.grade_id)
+    )).scalars().all()
 
-    day_map = {"monday":0,"tuesday":1,"wednesday":2,"thursday":3,"friday":4}
-    time_slots = [
-        ("7:00AM-7:55AM", 7, 0, 7, 55),
-        ("7:55AM-8:50AM", 7, 55, 8, 50),
-        ("8:50AM-9:45AM", 8, 50, 9, 45),
-        ("10:15AM-11:10AM", 10, 15, 11, 10),
-        ("11:10AM-12:05AM", 11, 10, 12, 5),
-        ("12:05AM-1:00PM", 12, 5, 13, 0),
-    ]
-    def slot_index(t):
-        h = t.hour + t.minute / 60
-        if 7 <= h < 7.92: return 0
-        if 7.92 <= h < 8.83: return 1
-        if 8.83 <= h < 9.75: return 2
-        if 10.25 <= h < 11.17: return 3
-        if 11.17 <= h < 12.08: return 4
-        return 5
+    if not loads:
+        return []
+
+    load_ids = [l.academic_load_id for l in loads]
+    subject_ids = list(set(l.subject_id for l in loads))
+    teacher_ids = list(set(l.teacher_id for l in loads))
+
+    subjects_map = {}
+    if subject_ids:
+        res = await db.execute(select(Subject).where(Subject.subject_id.in_(subject_ids)))
+        for s in res.scalars().all():
+            subjects_map[s.subject_id] = s
+
+    teachers_map = {}
+    if teacher_ids:
+        res = await db.execute(select(Teacher).where(Teacher.teacher_id.in_(teacher_ids)))
+        for t in res.scalars().all():
+            teachers_map[t.teacher_id] = t
+
+    all_schedules = (await db.execute(
+        select(Schedule).where(Schedule.academic_load_id.in_(load_ids))
+    )).scalars().all()
+
+    classroom_ids = list(set(s.classroom_id for s in all_schedules if s.classroom_id))
+    classrooms_map = {}
+    if classroom_ids:
+        res = await db.execute(select(Classroom).where(Classroom.classroom_id.in_(classroom_ids)))
+        for c in res.scalars().all():
+            classrooms_map[c.classroom_id] = c
+
+    schedules_by_load = {}
+    for s in all_schedules:
+        schedules_by_load.setdefault(s.academic_load_id, []).append(s)
 
     grid = {}
     for l in loads:
-        subj = await db.execute(select(Subject).where(Subject.subject_id == l.subject_id))
-        subject = subj.scalar_one_or_none()
-        teacher = await db.execute(select(Teacher).where(Teacher.teacher_id == l.teacher_id))
-        teacher = teacher.scalar_one_or_none()
-        schedules = await db.execute(
-            select(Schedule).where(Schedule.academic_load_id == l.academic_load_id)
-        )
-        for s in schedules.scalars().all():
-            classroom = await db.execute(select(Classroom).where(Classroom.classroom_id == s.classroom_id))
-            classroom = classroom.scalar_one_or_none()
-            dia = day_map.get(s.day_of_week.strip().lower(), 0)
-            blq = slot_index(s.start_time)
+        subject = subjects_map.get(l.subject_id)
+        teacher = teachers_map.get(l.teacher_id)
+        for s in schedules_by_load.get(l.academic_load_id, []):
+            classroom = classrooms_map.get(s.classroom_id)
+            dia = DAY_MAP.get(s.day_of_week.strip().lower(), 0)
+            blq = _slot_index(s.start_time)
             if blq not in grid:
-                grid[blq] = {"hora": time_slots[blq][0], "lunes": None, "martes": None, "miercoles": None, "jueves": None, "viernes": None}
-            day_key = ["lunes","martes","miercoles","jueves","viernes"][dia]
-            grid[blq][day_key] = {
+                grid[blq] = {"hora": TIME_SLOTS[blq][0], "lunes": None, "martes": None, "miercoles": None, "jueves": None, "viernes": None}
+            grid[blq][DAY_KEYS[dia]] = {
                 "materia": subject.name if subject else "N/A",
                 "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
                 "salon": classroom.name if classroom else "N/A",
@@ -122,6 +163,7 @@ async def mi_horario(
             }
 
     return [grid[i] for i in sorted(grid.keys())]
+
 
 # ─────────────────────────────────────────
 # NOTAS
@@ -133,43 +175,79 @@ async def mis_notas(
 ):
     student = await get_student_by_user(db, current_user["user_id"])
     result = await db.execute(
-        select(Enrollment).where(Enrollment.student_id == student.student_id)
+        select(Enrollment).where(
+            Enrollment.student_id == student.student_id,
+            Enrollment.status == "active"
+        )
     )
-    enrollments = result.scalars().all()
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        return []
+
+    records = (await db.execute(
+        select(GradeRecord).where(GradeRecord.enrollment_id == enrollment.enrollment_id)
+    )).scalars().all()
+
+    if not records:
+        return []
+
+    activity_ids = list(set(r.activity_id for r in records))
+
+    activities_map = {}
+    if activity_ids:
+        res = await db.execute(select(Activity).where(Activity.activity_id.in_(activity_ids)))
+        for a in res.scalars().all():
+            activities_map[a.activity_id] = a
+
+    load_ids = list(set(a.academic_load_id for a in activities_map.values()))
+    loads_map = {}
+    if load_ids:
+        res = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id.in_(load_ids)))
+        for l in res.scalars().all():
+            loads_map[l.academic_load_id] = l
+
+    subject_ids = list(set(l.subject_id for l in loads_map.values()))
+    teacher_ids = list(set(l.teacher_id for l in loads_map.values()))
+
+    subjects_map = {}
+    if subject_ids:
+        res = await db.execute(select(Subject).where(Subject.subject_id.in_(subject_ids)))
+        for s in res.scalars().all():
+            subjects_map[s.subject_id] = s
+
+    teachers_map = {}
+    if teacher_ids:
+        res = await db.execute(select(Teacher).where(Teacher.teacher_id.in_(teacher_ids)))
+        for t in res.scalars().all():
+            teachers_map[t.teacher_id] = t
 
     subjects_data = {}
-    for e in enrollments:
-        rec_result = await db.execute(
-            select(GradeRecord).where(GradeRecord.enrollment_id == e.enrollment_id)
-        )
-        for r in rec_result.scalars().all():
-            act = await db.execute(select(Activity).where(Activity.activity_id == r.activity_id))
-            activity = act.scalar_one_or_none()
-            if not activity:
-                continue
-            load = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id == activity.academic_load_id))
-            load = load.scalar_one_or_none()
-            subj = await db.execute(select(Subject).where(Subject.subject_id == load.subject_id))
-            subject = subj.scalar_one_or_none()
-            teacher = await db.execute(select(Teacher).where(Teacher.teacher_id == load.teacher_id))
-            teacher = teacher.scalar_one_or_none()
+    for r in records:
+        activity = activities_map.get(r.activity_id)
+        if not activity:
+            continue
+        load = loads_map.get(activity.academic_load_id)
+        if not load:
+            continue
+        subject = subjects_map.get(load.subject_id)
+        teacher = teachers_map.get(load.teacher_id)
 
-            nombre_materia = subject.name if subject else "N/A"
-            if nombre_materia not in subjects_data:
-                subjects_data[nombre_materia] = {
-                    "materia": nombre_materia,
-                    "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
-                    "carga_horaria": subject.weekly_hours if subject else 0,
-                    "promedio": 0.0,
-                    "actividades": [],
-                }
-            subjects_data[nombre_materia]["actividades"].append({
-                "actividad": activity.name,
-                "porcentaje": float(activity.percentage),
-                "fecha_entrega": str(activity.activity_date) if activity.activity_date else "",
-                "estado": "calificado",
-                "calificacion": float(r.score),
-            })
+        nombre_materia = subject.name if subject else "N/A"
+        if nombre_materia not in subjects_data:
+            subjects_data[nombre_materia] = {
+                "materia": nombre_materia,
+                "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
+                "carga_horaria": subject.weekly_hours if subject else 0,
+                "promedio": 0.0,
+                "actividades": [],
+            }
+        subjects_data[nombre_materia]["actividades"].append({
+            "actividad": activity.name,
+            "porcentaje": float(activity.percentage),
+            "fecha_entrega": str(activity.activity_date) if activity.activity_date else "",
+            "estado": "calificado",
+            "calificacion": float(r.score),
+        })
 
     for s in subjects_data.values():
         acts = s["actividades"]
@@ -177,6 +255,7 @@ async def mis_notas(
             s["promedio"] = round(sum(a["calificacion"] for a in acts) / len(acts), 2)
 
     return list(subjects_data.values())
+
 
 # ─────────────────────────────────────────
 # ASISTENCIA
@@ -188,41 +267,75 @@ async def mi_asistencia(
 ):
     student = await get_student_by_user(db, current_user["user_id"])
     result = await db.execute(
-        select(Enrollment).where(Enrollment.student_id == student.student_id)
+        select(Enrollment).where(
+            Enrollment.student_id == student.student_id,
+            Enrollment.status == "active"
+        )
     )
-    enrollments = result.scalars().all()
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        return []
+
+    attendance_records = (await db.execute(
+        select(Attendance).where(Attendance.enrollment_id == enrollment.enrollment_id)
+    )).scalars().all()
+
+    if not attendance_records:
+        return []
+
+    schedule_ids = list(set(a.schedule_id for a in attendance_records))
+    schedules_map = {}
+    if schedule_ids:
+        res = await db.execute(select(Schedule).where(Schedule.schedule_id.in_(schedule_ids)))
+        for s in res.scalars().all():
+            schedules_map[s.schedule_id] = s
+
+    load_ids = list(set(s.academic_load_id for s in schedules_map.values()))
+    loads_map = {}
+    if load_ids:
+        res = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id.in_(load_ids)))
+        for l in res.scalars().all():
+            loads_map[l.academic_load_id] = l
+
+    subject_ids = list(set(l.subject_id for l in loads_map.values()))
+    subjects_map = {}
+    if subject_ids:
+        res = await db.execute(select(Subject).where(Subject.subject_id.in_(subject_ids)))
+        for s in res.scalars().all():
+            subjects_map[s.subject_id] = s
 
     registros = []
-    for e in enrollments:
-        att_result = await db.execute(
-            select(Attendance).where(Attendance.enrollment_id == e.enrollment_id)
-        )
-        for a in att_result.scalars().all():
-            schedule = await db.execute(select(Schedule).where(Schedule.schedule_id == a.schedule_id))
-            schedule = schedule.scalar_one_or_none()
-            load = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id == schedule.academic_load_id))
-            load = load.scalar_one_or_none()
-            subj = await db.execute(select(Subject).where(Subject.subject_id == load.subject_id))
-            subject = subj.scalar_one_or_none()
+    for a in attendance_records:
+        schedule = schedules_map.get(a.schedule_id)
+        if not schedule:
+            continue
+        load = loads_map.get(schedule.academic_load_id)
+        if not load:
+            continue
+        subject = subjects_map.get(load.subject_id)
 
+        status_lower = (a.attendance_status or "").strip().lower()
+
+        if status_lower in JUSTIFICADA_STATUSES:
+            estado_str = "justificada"
+        elif status_lower in AUSENTE_STATUSES:
             estado_str = "sin_justificar"
-            if a.attendance_status == "present" or a.attendance_status == "justified":
-                estado_str = "justificada"
-            elif a.attendance_status == "absent":
-                estado_str = "sin_justificar"
-            elif a.attendance_status == "late":
-                estado_str = "sin_justificar"
+        elif status_lower in TARDE_STATUSES:
+            estado_str = "sin_justificar"
+        else:
+            estado_str = "sin_justificar"
 
-            registros.append({
-                "id": a.attendance_id,
-                "fecha": str(a.attendance_date),
-                "materia": subject.name if subject else "N/A",
-                "tipo_falta": a.attendance_status or "",
-                "estado": estado_str,
-                "observacion": a.comments or "",
-            })
+        registros.append({
+            "id": a.attendance_id,
+            "fecha": str(a.attendance_date),
+            "materia": subject.name if subject else "N/A",
+            "tipo_falta": a.attendance_status or "",
+            "estado": estado_str,
+            "observacion": a.comments or "",
+        })
 
     return registros
+
 
 # ─────────────────────────────────────────
 # BOLETÍN
@@ -235,34 +348,99 @@ async def mi_boletin(
 ):
     student = await get_student_by_user(db, current_user["user_id"])
     result = await db.execute(
-        select(Enrollment).where(Enrollment.student_id == student.student_id)
+        select(Enrollment).where(
+            Enrollment.student_id == student.student_id,
+            Enrollment.status == "active"
+        )
     )
-    enrollments = result.scalars().all()
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="No tienes matrícula activa")
+
+    grade_id = enrollment.grade_id
+
+    records = (await db.execute(
+        select(GradeRecord).where(GradeRecord.enrollment_id == enrollment.enrollment_id)
+    )).scalars().all()
+
+    activity_ids = list(set(r.activity_id for r in records)) if records else []
+    activities_map = {}
+    grades_load_ids = set()
+    if activity_ids:
+        res = await db.execute(select(Activity).where(Activity.activity_id.in_(activity_ids)))
+        for a in res.scalars().all():
+            activities_map[a.activity_id] = a
+            grades_load_ids.add(a.academic_load_id)
+
+    attendance_records = (await db.execute(
+        select(Attendance).where(Attendance.enrollment_id == enrollment.enrollment_id)
+    )).scalars().all()
+
+    att_schedule_ids = list(set(a.schedule_id for a in attendance_records)) if attendance_records else []
+    att_schedules_map = {}
+    if att_schedule_ids:
+        res = await db.execute(select(Schedule).where(Schedule.schedule_id.in_(att_schedule_ids)))
+        for s in res.scalars().all():
+            att_schedules_map[s.schedule_id] = s
+
+    att_load_ids = set(s.academic_load_id for s in att_schedules_map.values())
+
+    all_load_ids = list(grades_load_ids | att_load_ids)
+    loads_map = {}
+    if all_load_ids:
+        res = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id.in_(all_load_ids)))
+        for l in res.scalars().all():
+            loads_map[l.academic_load_id] = l
+
+    all_subject_ids = list(set(l.subject_id for l in loads_map.values()))
+    all_teacher_ids = list(set(l.teacher_id for l in loads_map.values()))
+
+    subjects_map = {}
+    if all_subject_ids:
+        res = await db.execute(select(Subject).where(Subject.subject_id.in_(all_subject_ids)))
+        for s in res.scalars().all():
+            subjects_map[s.subject_id] = s
+
+    teachers_map = {}
+    if all_teacher_ids:
+        res = await db.execute(select(Teacher).where(Teacher.teacher_id.in_(all_teacher_ids)))
+        for t in res.scalars().all():
+            teachers_map[t.teacher_id] = t
+
+    fallas_por_materia = {}
+    for a in attendance_records:
+        schedule = att_schedules_map.get(a.schedule_id)
+        if not schedule:
+            continue
+        load = loads_map.get(schedule.academic_load_id)
+        if not load:
+            continue
+        status_lower = (a.attendance_status or "").strip().lower()
+        if status_lower in STATUS_ES_FALTA:
+            subj = subjects_map.get(load.subject_id)
+            if subj:
+                fallas_por_materia[subj.name] = fallas_por_materia.get(subj.name, 0) + 1
 
     materias_dict = {}
-    for e in enrollments:
-        rec_result = await db.execute(
-            select(GradeRecord).where(GradeRecord.enrollment_id == e.enrollment_id)
-        )
-        for r in rec_result.scalars().all():
-            act = await db.execute(select(Activity).where(Activity.activity_id == r.activity_id))
-            activity = act.scalar_one_or_none()
-            if not activity:
-                continue
-            load = await db.execute(select(AcademicLoad).where(AcademicLoad.academic_load_id == activity.academic_load_id))
-            load = load.scalar_one_or_none()
-            subj = await db.execute(select(Subject).where(Subject.subject_id == load.subject_id))
-            subject = subj.scalar_one_or_none()
-            teacher = await db.execute(select(Teacher).where(Teacher.teacher_id == load.teacher_id))
-            teacher = teacher.scalar_one_or_none()
+    for r in records:
+        activity = activities_map.get(r.activity_id)
+        if not activity:
+            continue
+        load = loads_map.get(activity.academic_load_id)
+        if not load:
+            continue
+        subject = subjects_map.get(load.subject_id)
+        teacher = teachers_map.get(load.teacher_id)
 
-            nombre_materia = subject.name if subject else "N/A"
-            if nombre_materia not in materias_dict:
-                materias_dict[nombre_materia] = {
-                    "notas": [],
-                    "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
-                }
-            materias_dict[nombre_materia]["notas"].append(float(r.score) * float(activity.percentage) / 100)
+        nombre_materia = subject.name if subject else "N/A"
+        if nombre_materia not in materias_dict:
+            materias_dict[nombre_materia] = {
+                "notas": [],
+                "docente": f"{teacher.first_name} {teacher.last_name}" if teacher else "N/A",
+            }
+        materias_dict[nombre_materia]["notas"].append(
+            float(r.score) * float(activity.percentage) / 100
+        )
 
     boletin = []
     for materia, datos in materias_dict.items():
@@ -276,13 +454,42 @@ async def mi_boletin(
         boletin.append({
             "materia": materia,
             "docente": datos["docente"],
-            "fallas": "N",
+            "fallas": str(fallas_por_materia.get(materia, 0)),
             "nivel_desempeno": nivel,
             "nota_final": nota_final,
         })
 
-    total_est = await db.execute(select(Enrollment).where(Enrollment.course_id == enrollments[0].course_id if enrollments else 0))
-    total_estudiantes = len(total_est.scalars().all()) if enrollments else 0
+    total_est_result = await db.execute(
+        select(Enrollment).where(
+            Enrollment.grade_id == grade_id,
+            Enrollment.status == "active"
+        )
+    )
+    total_estudiantes = len(total_est_result.scalars().all())
+
+    all_enrollments = (await db.execute(
+        select(Enrollment).where(Enrollment.student_id == student.student_id)
+    )).scalars().all()
+
+    period_ids = list(set(e.period_id for e in all_enrollments if e.period_id))
+    periodos_nombres = []
+    if period_ids:
+        res = await db.execute(select(AcademicPeriod).where(AcademicPeriod.period_id.in_(period_ids)))
+        for p in res.scalars().all():
+            periodos_nombres.append(p.name)
+
+    historial = []
+    for enr in all_enrollments:
+        year = enr.enrollment_date.year if enr.enrollment_date else date.today().year
+        if enr.period_id:
+            p_res = await db.execute(
+                select(AcademicPeriod).where(AcademicPeriod.period_id == enr.period_id)
+            )
+            p = p_res.scalar_one_or_none()
+            label = p.name if p else str(enr.period_id)
+        else:
+            label = str(enr.period_id)
+        historial.append({"titulo": f"Periodo {label}", "anio": year})
 
     return {
         "materias": boletin,
@@ -291,9 +498,10 @@ async def mi_boletin(
             "puesto": 1,
             "total_estudiantes": total_estudiantes,
         },
-        "periodos": [],
-        "historial": [{"titulo": "Periodo actual", "anio": date.today().year}],
+        "periodos": periodos_nombres,
+        "historial": historial if historial else [{"titulo": "Periodo actual", "anio": date.today().year}],
     }
+
 
 # ─────────────────────────────────────────
 # OBSERVADOR
@@ -311,13 +519,16 @@ async def mi_observador(
     result = await db.execute(query)
     records = result.scalars().all()
 
+    teacher_ids = list(set(r.docente_id for r in records if r.docente_id))
+    teachers_map = {}
+    if teacher_ids:
+        res = await db.execute(select(Teacher).where(Teacher.teacher_id.in_(teacher_ids)))
+        for t in res.scalars().all():
+            teachers_map[t.teacher_id] = t
+
     output = []
     for obs in records:
-        teacher = None
-        if obs.docente_id:
-            t_result = await db.execute(select(Teacher).where(Teacher.teacher_id == obs.docente_id))
-            teacher = t_result.scalar_one_or_none()
-
+        teacher = teachers_map.get(obs.docente_id)
         output.append({
             "id": obs.id,
             "tipo": obs.tipo,

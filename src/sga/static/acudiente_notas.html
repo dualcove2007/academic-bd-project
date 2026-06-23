@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Acudiente - NOTAS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <script src="api.js"></script>
+    <style>
+        body { font-family: 'Open Sans', sans-serif; margin: 0; background-color: #A3FBB7; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 240px; background-color: #FFFFFF; display: flex; flex-direction: column; align-items: center; padding-top: 20px; padding-bottom: 25px; box-sizing: border-box; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-top { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .avatar-colegio { width: 150px; height: 150px; background-color: #A3FBB7; border-radius: 50%; margin-bottom: 30px; }
+        .nombre-colegio { font-size: 16px; font-weight: 800; color: #000000; text-align: center; margin-bottom: 50px; }
+        .menu-nav { width: 100%; padding: 0 15px; box-sizing: border-box; }
+        .menu-item { font-size: 15px; font-weight: 800; color: #000000; padding: 14px 20px; margin-bottom: 15px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; }
+        .menu-item.active { background-color: #4AFE6C; }
+        .btn-cerrar-sesion { background-color: #008000; color: #FFFFFF; font-size: 15px; font-weight: 800; border: none; padding: 14px 24px; border-radius: 25px; cursor: pointer; width: calc(100% - 30px); margin: 0 15px; text-align: center; text-transform: uppercase; }
+        .main-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header-top { background-color: #FFFFFF; height: 75px; display: flex; justify-content: space-between; align-items: center; padding: 0 35px; flex-shrink: 0; }
+        .titulo-vista { font-size: 24px; font-weight: 800; }
+        .usuario-info-block { display: flex; align-items: center; gap: 15px; }
+        .usuario-texto { text-align: right; }
+        .nombre-acudiente { font-size: 14px; font-weight: 800; color: #000000; }
+        .rol-acudiente { font-size: 13px; font-weight: 800; color: #FF9800; }
+        .avatar-acudiente { width: 50px; height: 50px; background-color: #FFE0B2; border-radius: 50%; }
+        .content-body { padding: 25px; box-sizing: border-box; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .view-wrapper { width: 100%; max-width: 1150px; display: flex; flex-direction: column; gap: 15px; box-sizing: border-box; }
+        .select-student { font-family: 'Open Sans', sans-serif; font-size: 14px; font-weight: 800; padding: 10px 40px 10px 15px; border: 1px solid #A6A6A6; border-radius: 6px; background: #FFFFFF; cursor: pointer; min-width: 280px; }
+        .table-card-wrapper { background-color: #FFFFFF; border-radius: 15px; padding: 0; width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,0.05); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #D5FFF2; font-size: 15px; font-weight: 800; color: #000000; padding: 16px 10px; text-align: center; border: 1px solid #CCCCCC; text-transform: uppercase; }
+        td { border: 1px solid #CCCCCC; padding: 16px 10px; vertical-align: middle; text-align: center; font-weight: 800; }
+        .summary-bar { background-color: #FFFFFF; border-radius: 10px; padding: 15px 25px; width: 100%; box-shadow: 0 6px 15px rgba(0,0,0,0.08); display: flex; justify-content: flex-end; gap: 10px; box-sizing: border-box; font-size: 14px; font-weight: 800; }
+        .badge { display: inline-block; border-radius: 20px; padding: 6px 20px; font-weight: 800; font-size: 14px; }
+        .badge-superior { background-color: #4AFE6C; }
+        .badge-alto { background-color: #4AFE6C; }
+        .badge-basico { background-color: #FFFF66; }
+        .badge-bajo { background-color: #FF0000; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="avatar-colegio"></div><div class="nombre-colegio">[NOMBRE COLEGIO]</div>
+            <div class="menu-nav">
+                <div class="menu-item" onclick="window.location='acudiente_inicio.html'">&bull; INICIO</div>
+                <div class="menu-item active">&bull; NOTAS</div>
+                <div class="menu-item" onclick="window.location='acudiente_asistencia.html'">&bull; ASISTENCIA</div>
+                <div class="menu-item" onclick="window.location='acudiente_observador.html'">&bull; OBSERVADOR</div>
+            </div>
+        </div>
+        <button class="btn-cerrar-sesion" onclick="logout()">CERRAR SESION</button>
+    </div>
+    <div class="main-container">
+        <div class="header-top">
+            <div class="titulo-vista">NOTAS</div>
+            <div class="usuario-info-block"><div class="usuario-texto"><div class="nombre-acudiente">[NOMBRE]</div><div class="rol-acudiente">"ACUDIENTE"</div></div><div class="avatar-acudiente"></div></div>
+        </div>
+        <div class="content-body">
+            <div class="view-wrapper">
+                <select class="select-student" id="studentSelect"><option>Seleccione estudiante...</option></select>
+                <div class="table-card-wrapper">
+                    <table>
+                        <thead><tr><th>MATERIA</th><th>DOCENTE</th><th>PROMEDIO</th><th>ACTIVIDADES</th></tr></thead>
+                        <tbody id="notasBody"><tr><td colspan="4">Seleccione un estudiante</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="summary-bar" id="summaryBar">PROMEDIO GENERAL: --</div>
+            </div>
+        </div>
+    </div>
+<script>
+    if (!isAuthenticated()) window.location.href = 'login.html';
+    const user = getUser();
+    if (user) document.querySelector('.nombre-acudiente').textContent = user.nombre;
+
+    let students = [];
+    const sel = document.getElementById('studentSelect');
+    const preselected = JSON.parse(localStorage.getItem('selected_student') || 'null');
+
+    apiGet('/acudientes/mis-estudiantes').then(data => {
+        students = data || [];
+        sel.innerHTML = '<option value="">Seleccione estudiante...</option>';
+        students.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.nombre + ' (' + s.grado + ')'; sel.appendChild(o); });
+        if (preselected && students.find(s => s.id === preselected.id)) { sel.value = preselected.id; loadNotas(preselected.id); }
+    }).catch(() => {});
+
+    sel.addEventListener('change', () => loadNotas(sel.value));
+    function loadNotas(sid) {
+        if (!sid) { document.getElementById('notasBody').innerHTML = '<tr><td colspan="4">Seleccione un estudiante</td></tr>'; return; }
+        const s = students.find(x => x.id == sid);
+        localStorage.setItem('selected_student', JSON.stringify(s || {id:sid}));
+        apiGet('/acudientes/notas/' + sid).then(data => {
+            const tbody = document.getElementById('notasBody');
+            if (!data || !data.materias || data.materias.length === 0) { tbody.innerHTML = '<tr><td colspan="4">Sin notas registradas</td></tr>'; return; }
+            tbody.innerHTML = '';
+            data.materias.forEach(m => {
+                const tr = document.createElement('tr');
+                const prom = m.promedio != null ? m.promedio.toFixed(1) : 'N.N';
+                let badgeClass = 'bajo', nivel = 'Bajo';
+                if (m.promedio >= 4.6) { badgeClass = 'superior'; nivel = 'Superior'; }
+                else if (m.promedio >= 4.0) { badgeClass = 'alto'; nivel = 'Alto'; }
+                else if (m.promedio >= 3.0) { badgeClass = 'basico'; nivel = 'Basico'; }
+                tr.innerHTML = `<td>${m.materia}</td><td>${m.docente}</td><td><span class="badge badge-${badgeClass}">${prom} - ${nivel}</span></td><td>${(m.actividades || []).length}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('summaryBar').textContent = 'PROMEDIO GENERAL: ' + (data.promedio != null ? data.promedio.toFixed(1) : '--');
+        }).catch(() => document.getElementById('notasBody').innerHTML = '<tr><td colspan="4">Error al cargar notas</td></tr>');
+    }
+</script>
+</body>
+</html>

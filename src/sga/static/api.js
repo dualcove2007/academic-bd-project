@@ -46,7 +46,19 @@ async function apiRequest(endpoint, options = {}) {
     if (res.status === 204) return null;
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Error en la solicitud');
+    if (!res.ok) {
+        let msg = 'Error en la solicitud';
+        if (data.detail) {
+            if (typeof data.detail === 'string') {
+                msg = data.detail;
+            } else if (Array.isArray(data.detail)) {
+                msg = data.detail.map(e => e.msg || JSON.stringify(e)).join(' | ');
+            } else {
+                msg = JSON.stringify(data.detail);
+            }
+        }
+        throw new Error(msg);
+    }
     return data;
 }
 
@@ -62,8 +74,15 @@ function apiPut(endpoint, body) {
     return apiRequest(endpoint, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function apiPatch(endpoint) {
-    return apiRequest(endpoint, { method: 'PATCH' });
+function apiPatch(endpoint, body) {
+    return apiRequest(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+}
+
+function escapeHtml(str) {
+    if (!str) return str;
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
 }
 
 function apiDelete(endpoint) {

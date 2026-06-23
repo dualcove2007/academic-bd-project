@@ -252,11 +252,12 @@
 
                 <div class="input-group">
                     <label class="input-label">ROL</label>
-                    <select id="rol" class="form-control">
+                    <select id="rol" class="form-control" onchange="toggleAcudienteFields()">
                         <option value="" disabled selected>Selecciona el Rol</option>
-                        <option value="estudiante">estudiante</option>
-                        <option value="docente">docente</option>
-                        <option value="admin">admin</option>
+                        <option value="estudiante">Estudiante</option>
+                        <option value="docente">Docente</option>
+                        <option value="acudiente">Acudiente</option>
+                        <option value="admin">Administrativo</option>
                     </select>
                 </div>
 
@@ -268,6 +269,28 @@
                 <div class="input-group">
                     <label class="input-label">CONFIRMAR CONTRASEÑA</label>
                     <input type="password" class="form-control" placeholder="********">
+                </div>
+            </div>
+
+            <!-- Seccion Acudiente (oculta por defecto) -->
+            <div id="acudienteSection" style="display:none;width:100%;margin-top:20px;padding-top:20px;border-top:2px solid #4AFE6C;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                    <div class="input-group" style="flex:1;min-width:200px;">
+                        <label class="input-label">PARENTESCO</label>
+                        <select id="parentesco" class="form-control">
+                            <option value="Padre">Padre</option>
+                            <option value="Madre">Madre</option>
+                            <option value="Tutor">Tutor</option>
+                            <option value="Abuelo(a)">Abuelo(a)</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top:15px;">
+                    <label class="input-label">ESTUDIANTES A CARGO (seleccione al menos uno)</label>
+                    <div id="estudiantesCheckboxes" style="max-height:200px;overflow-y:auto;background:#f8fafc;border:1px solid #A6A6A6;border-radius:8px;padding:10px;">
+                        <span style="color:#8C8C8C;">Cargando estudiantes...</span>
+                    </div>
                 </div>
             </div>
 
@@ -286,14 +309,44 @@
     </div>
 
     <script>
+        let estudiantesDisponibles = [];
+
         document.addEventListener('DOMContentLoaded', function() {
-            if (!isAuthenticated()) {
-                window.location.href = 'login.html';
-            }
+            if (!isAuthenticated()) { window.location.href = 'login.html'; }
+            loadEstudiantes();
         });
+
+        async function loadEstudiantes() {
+            try {
+                const data = await apiGet('/admin/usuarios?rol=estudiante&estado=activo');
+                estudiantesDisponibles = data || [];
+                renderEstudiantes();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderEstudiantes() {
+            const container = document.getElementById('estudiantesCheckboxes');
+            if (estudiantesDisponibles.length === 0) {
+                container.innerHTML = '<span style="color:#8C8C8C;">No hay estudiantes registrados</span>';
+                return;
+            }
+            container.innerHTML = '';
+            estudiantesDisponibles.forEach(est => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;font-weight:700;';
+                label.innerHTML = `<input type="checkbox" value="${est.id}" class="estudiante-check"> ${est.nombre_completo || est.username} (${est.numero_documento || 'Sin doc'})`;
+                container.appendChild(label);
+            });
+        }
+
+        function toggleAcudienteFields() {
+            const rol = document.getElementById('rol').value;
+            document.getElementById('acudienteSection').style.display = rol === 'acudiente' ? 'block' : 'none';
+        }
 
         async function handleRegister(event) {
             event.preventDefault();
+            const rol = document.getElementById('rol').value;
             const formData = {
                 username: document.getElementById('username').value,
                 nombre_completo: document.getElementById('nombre_completo').value,
@@ -301,12 +354,21 @@
                 numero_documento: document.getElementById('numero_documento').value,
                 correo: document.getElementById('correo').value,
                 telefono: document.getElementById('telefono').value,
-                rol: document.getElementById('rol').value,
+                rol: rol,
                 password: document.getElementById('password').value
             };
             try {
                 const result = await apiPost('/admin/usuarios', formData);
-                const creds = 'Usuario: ' + formData.username + ' | Contraseña: ' + formData.password;
+                // Si es acudiente, asignar estudiantes seleccionados
+                if (rol === 'acudiente' && result.id) {
+                    const checks = document.querySelectorAll('.estudiante-check:checked');
+                    for (const chk of checks) {
+                        try {
+                            await apiPatch('/admin/usuarios/' + chk.value + '/guardian', { guardian_id: result.id });
+                        } catch (e) { console.error('Error asignando estudiante ' + chk.value + ':', e); }
+                    }
+                }
+                const creds = 'Usuario: ' + formData.username + ' | Contrasena: ' + formData.password;
                 document.getElementById('modalCredentials').textContent = creds;
                 document.getElementById('successModal').style.display = 'flex';
             } catch (error) {

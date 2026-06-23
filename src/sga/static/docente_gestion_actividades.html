@@ -447,11 +447,11 @@
                 <div class="progress-card">
                     <span class="progress-label">Distribución de los Porcentajes del Periodo:</span>
                     <div class="progress-track-wrapper">
-                        <div class="progress-fill-bar"></div>
+                        <div class="progress-fill-bar" style="width:0%"></div>
                     </div>
                     <div class="progress-values-text">
-                        <span class="progress-main-number">65% / 100%</span>
-                        <span class="progress-sub-number">Falta el 35% por asignar</span>
+                        <span class="progress-main-number">0% / 100%</span>
+                        <span class="progress-sub-number">Seleccione una materia</span>
                     </div>
                 </div>
 
@@ -526,10 +526,22 @@
         document.querySelector('.nombre-docente').textContent = user.nombre || user.email;
     }
     let cargaMaterias = [];
+    function updateProgressBar(data) {
+        const total = (data && data.length) ? data.reduce((s, a) => s + (a.porcentaje || 0), 0) : 0;
+        const pct = Math.min(total, 100);
+        document.querySelector('.progress-fill-bar').style.width = pct + '%';
+        document.querySelector('.progress-main-number').textContent = total + '% / 100%';
+        document.querySelector('.progress-sub-number').textContent = total >= 100 ? 'Porcentaje completo' : ('Falta el ' + (100 - pct) + '% por asignar');
+    }
     function loadActividades(materiaId) {
-        if (!materiaId) { document.querySelector('.activities-table tbody').innerHTML = '<tr><td colspan="5">Seleccione una materia</td></tr>'; return; }
+        if (!materiaId) {
+            document.querySelector('.activities-table tbody').innerHTML = '<tr><td colspan="5">Seleccione una materia</td></tr>';
+            updateProgressBar(null);
+            return;
+        }
         apiGet('/docentes/actividades/' + materiaId).then(data => {
             const tbody = document.querySelector('.activities-table tbody');
+            updateProgressBar(data);
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5">No hay actividades registradas</td></tr>';
                 return;
@@ -537,14 +549,10 @@
             tbody.innerHTML = '';
             data.forEach(act => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td><div class="activity-info-cell"><span class="activity-title">' + (act.nombre || '') + '</span><span class="activity-desc">' + (act.descripcion || '') + '</span></div></td><td>' + (act.fecha_entrega || '') + '</td><td class="metric-bold-text">' + (act.porcentaje || 0) + '%</td><td><div class="status-circle-badge ' + (act.tiene_notas ? 'con-notas' : 'sin-notas') + '">' + (act.tiene_notas ? 'Con notas<br>registradas' : 'Sin notas') + '</div></td><td><div class="actions-cell-container"><button class="btn-action-circle ' + (act.tiene_notas ? 'edit-disabled' : 'edit-active') + '" onclick="editarActividad(' + act.id + ')">✏️</button><button class="btn-action-circle ' + (act.tiene_notas ? 'delete-disabled' : 'delete-active') + '" onclick="eliminarActividad(' + act.id + ')">🗑️</button></div></td>';
+                tr.innerHTML = '<td><div class="activity-info-cell"><span class="activity-title">' + escapeHtml(act.nombre || '') + '</span><span class="activity-desc">' + escapeHtml(act.descripcion || '') + '</span></div></td><td>' + escapeHtml(act.fecha_entrega || '') + '</td><td class="metric-bold-text">' + (act.porcentaje || 0) + '%</td><td><div class="status-circle-badge ' + (act.tiene_notas ? 'con-notas' : 'sin-notas') + '">' + (act.tiene_notas ? 'Con notas<br>registradas' : 'Sin notas') + '</div></td><td><div class="actions-cell-container"><button class="btn-action-circle ' + (act.tiene_notas ? 'edit-disabled' : 'edit-active') + '" onclick="editarActividad(' + act.id + ')">✏️</button><button class="btn-action-circle ' + (act.tiene_notas ? 'delete-disabled' : 'delete-active') + '" onclick="eliminarActividad(' + act.id + ')">🗑️</button></div></td>';
                 tbody.appendChild(tr);
             });
-            const total = data.reduce((s, a) => s + (a.porcentaje || 0), 0);
-            document.querySelector('.progress-fill-bar').style.width = Math.min(total, 100) + '%';
-            document.querySelector('.progress-main-number').textContent = total + '% / 100%';
-            document.querySelector('.progress-sub-number').textContent = 'Falta el ' + (100 - Math.min(total, 100)) + '% por asignar';
-        }).catch(() => {});
+        }).catch(() => { updateProgressBar(null); });
     }
     function nuevaActividad() {
         const select = document.querySelector('.materia-select');
@@ -566,13 +574,28 @@
         }).catch(e => alert('Error: ' + e.message));
     }
     function editarActividad(id) {
-        alert('Editar actividad próximamente');
+        const nombre = prompt('Nombre de la actividad:');
+        if (!nombre && nombre !== '') return;
+        const descripcion = prompt('Descripción:');
+        const porcentaje = prompt('Porcentaje (%):');
+        const fecha = prompt('Fecha de entrega (YYYY-MM-DD):');
+        const body = { nombre };
+        if (descripcion !== null) body.descripcion = descripcion;
+        if (porcentaje !== null && porcentaje !== '') body.porcentaje = parseFloat(porcentaje);
+        if (fecha !== null && fecha !== '') body.fecha_entrega = fecha;
+        apiPut('/docentes/actividades/' + id, body).then(() => {
+            const select = document.querySelector('.materia-select');
+            loadActividades(select.value);
+        }).catch(e => alert('Error: ' + e.message));
     }
     apiGet('/docentes/mi-carga').then(data => {
         cargaMaterias = data || [];
         const select = document.querySelector('.materia-select');
         select.innerHTML = '<option value="">Seleccione materia...</option>';
+        const seen = new Set();
         cargaMaterias.forEach(item => {
+            if (seen.has(item.materia_id)) return;
+            seen.add(item.materia_id);
             const opt = document.createElement('option');
             opt.value = item.materia_id;
             opt.textContent = (item.materia_nombre || '') + ' - ' + (item.grado || '');

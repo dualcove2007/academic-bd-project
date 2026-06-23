@@ -89,14 +89,14 @@ class SubjectOut(BaseModel):
 # ─────────────────────────────────────────
 class EnrollmentCreate(BaseModel):
     student_id: int
-    course_id: int
+    grade_id: int
     period_id: int
     enrollment_date: date
 
 class EnrollmentOut(BaseModel):
     enrollment_id: int
     student_id: int
-    course_id: int
+    grade_id: int
     period_id: int
     enrollment_date: date
     status: str
@@ -109,14 +109,14 @@ class EnrollmentOut(BaseModel):
 # ─────────────────────────────────────────
 class AcademicLoadCreate(BaseModel):
     teacher_id: int
-    course_id: int
+    grade_id: int
     subject_id: int
     period_id: int
 
 class AcademicLoadOut(BaseModel):
     academic_load_id: int
     teacher_id: int
-    course_id: int
+    grade_id: int
     subject_id: int
     period_id: int
 

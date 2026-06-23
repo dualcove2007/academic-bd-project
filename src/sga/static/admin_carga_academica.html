@@ -256,10 +256,11 @@
         }
 
         /* Distribución de columnas aproximada */
-        .carga-table th:nth-child(1) { width: 28%; }
+        .carga-table th:nth-child(1) { width: 22%; }
         .carga-table th:nth-child(2) { width: 24%; }
-        .carga-table th:nth-child(3) { width: 28%; }
-        .carga-table th:nth-child(4) { width: 20%; }
+        .carga-table th:nth-child(3) { width: 24%; }
+        .carga-table th:nth-child(4) { width: 15%; }
+        .carga-table th:nth-child(5) { width: 15%; }
 
         .carga-table td {
             border: 1px solid #CCCCCC;
@@ -307,7 +308,7 @@
                 <div class="menu-item" onclick="window.location='admin_gestion_usuarios.html'">&bull; GESTION DE USUARIOS</div>
                 <div class="menu-item" onclick="window.location='admin_gestion_matriculas.html'">&bull; MATRICULAS ACADEMICAS</div>
                 <div class="menu-item" onclick="window.location='admin_gestion_materias.html'">&bull; MATERIAS</div>
-                <div class="menu-item" onclick="window.location='admin_gestion_cursos.html'">&bull; CURSOS</div>
+                <div class="menu-item" onclick="window.location='admin_gestion_grados.html'">&bull; GRADOS</div>
                 <div class="menu-item active">&bull; CARGA ACADEMICA Y HORARIOS</div>
                 <div class="menu-item" onclick="window.location='admin_reportes_y_estadisticas.html'">&bull; REPORTES Y ESTADISTICAS GLOBALES</div>
             </div>
@@ -338,8 +339,8 @@
                             <option value="">Seleccione Docente</option>
                         </select>
 
-                        <select class="form-select" id="cursoSelect">
-                            <option value="">Seleccione Curso</option>
+                        <select class="form-select" id="GRADOSelect">
+                            <option value="">Seleccione Grado</option>
                         </select>
 
                         <select class="form-select" id="materiaSelect">
@@ -348,6 +349,10 @@
 
                         <select class="form-select" id="horarioSelect">
                             <option value="">Seleccione Horario</option>
+                        </select>
+
+                        <select class="form-select" id="salonSelect">
+                            <option value="">Seleccione Salón</option>
                         </select>
 
                         <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
@@ -377,8 +382,9 @@
                         <thead>
                             <tr>
                                 <th>Docente</th>
-                                <th>Curso / Materia</th>
+                                <th>Grado / Materia</th>
                                 <th>Horario Asignado</th>
+                                <th>Salón</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -398,9 +404,10 @@
     document.querySelector('.nombre-admin').textContent = user.nombre;
 
     const docenteSelect = document.getElementById('docenteSelect');
-    const cursoSelect = document.getElementById('cursoSelect');
+    const GRADOSelect = document.getElementById('GRADOSelect');
     const materiaSelect = document.getElementById('materiaSelect');
     const horarioSelect = document.getElementById('horarioSelect');
+    const salonSelect = document.getElementById('salonSelect');
     const cargaBody = document.getElementById('cargaBody');
     const cargaForm = document.getElementById('cargaForm');
 
@@ -417,17 +424,17 @@
         } catch (e) { console.error('Error cargando docentes:', e); }
     }
 
-    async function loadCursos() {
+    async function loadGrados() {
         try {
-            const cursos = await apiGet('/admin/cursos');
-            cursoSelect.innerHTML = '<option value="">Seleccione Curso</option>';
-            cursos.forEach(c => {
+            const grados = await apiGet('/admin/grados');
+            GRADOSelect.innerHTML = '<option value="">Seleccione Grado</option>';
+            grados.forEach(g => {
                 const opt = document.createElement('option');
-                opt.value = c.course_id;
-                opt.textContent = c.nombre;
-                cursoSelect.appendChild(opt);
+                opt.value = g.grade_id;
+                opt.textContent = g.nombre;
+                GRADOSelect.appendChild(opt);
             });
-        } catch (e) { console.error('Error cargando cursos:', e); }
+        } catch (e) { console.error('Error cargando grados:', e); }
     }
 
     async function loadMaterias() {
@@ -458,6 +465,19 @@
         } catch (e) { console.error('Error cargando horarios:', e); }
     }
 
+    async function loadSalones() {
+        try {
+            const salones = await apiGet('/admin/salones');
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            salones.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.classroom_id;
+                opt.textContent = s.nombre + (s.ubicacion ? ' (' + s.ubicacion + ')' : '') + ' - Cap: ' + s.capacidad;
+                salonSelect.appendChild(opt);
+            });
+        } catch (e) { console.error('Error cargando salones:', e); }
+    }
+
     async function loadCarga() {
         try {
             const carga = await apiGet('/admin/carga-academica');
@@ -466,8 +486,9 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${c.docente_nombre || c.docente || ''}</td>
-                    <td>${c.curso || ''} / ${c.materia_nombre || c.materia || ''}</td>
+                    <td>${c.grado || c.curso || ''} / ${c.materia_nombre || c.materia || ''}</td>
                     <td>${c.horario || ''}</td>
+                    <td>${c.salon || '-'}</td>
                     <td>
                         <button class="btn-delete-action" data-id="${c.id}">
                             <svg viewBox="0 0 24 24">
@@ -503,13 +524,14 @@
         const horarioOpt = horarioSelect.options[horarioSelect.selectedIndex];
         const data = {
             docente_id: docenteSelect.value,
-            curso_id: cursoSelect.value,
+            grado_id: GRADOSelect.value,
             materia_id: materiaSelect.value,
             hora_inicio: horarioOpt.dataset.horaInicio,
             hora_fin: horarioOpt.dataset.horaFin,
             dias: diasSel,
+            classroom_id: salonSelect.value || null,
         };
-        if (!data.docente_id || !data.curso_id || !data.materia_id || !data.hora_inicio) {
+        if (!data.docente_id || !data.grado_id || !data.materia_id || !data.hora_inicio) {
             alert('Seleccione docente, curso, materia y horario');
             return;
         }
@@ -517,13 +539,16 @@
             await apiPost('/admin/carga-academica', data);
             loadCarga();
             cargaForm.reset();
+            salonSelect.innerHTML = '<option value="">Seleccione Salón</option>';
+            loadSalones();
         } catch (e) { alert('Error: ' + e.message); }
     });
 
     loadDocentes();
-    loadCursos();
+    loadGrados();
     loadMaterias();
     loadHorarios();
+    loadSalones();
     loadCarga();
 </script>
 </body>

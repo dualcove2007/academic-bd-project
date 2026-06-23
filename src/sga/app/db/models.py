@@ -52,17 +52,7 @@ class Campus(Base):
 
     institution: Mapped["Institution"] = relationship()
     classrooms: Mapped[list["Classroom"]] = relationship(back_populates="campus")
-    courses: Mapped[list["Course"]] = relationship(back_populates="campus")
-
-# ─────────────────────────────────────────
-# GRADES (grade levels)
-# ─────────────────────────────────────────
-class Grade(Base):
-    __tablename__ = "grades"
-
-    grade_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100))
-    education_level: Mapped[str] = mapped_column(String(100))
+    grades: Mapped[list["Grade"]] = relationship(back_populates="campus")
 
 # ─────────────────────────────────────────
 # CLASSROOMS
@@ -93,20 +83,20 @@ class AcademicPeriod(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")
 
 # ─────────────────────────────────────────
-# COURSES (course sections per grade)
+# GRADES (Primero → Once)
 # ─────────────────────────────────────────
-class Course(Base):
-    __tablename__ = "courses"
+class Grade(Base):
+    __tablename__ = "grades"
 
-    course_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
+    grade_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     campus_id: Mapped[int] = mapped_column(ForeignKey("campuses.campus_id"))
     name: Mapped[str] = mapped_column(String(180))
+    education_level: Mapped[str] = mapped_column(String(100), default="Básica")
     maximum_capacity: Mapped[int] = mapped_column(Integer)
     academic_year: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
-    campus: Mapped["Campus"] = relationship(back_populates="courses")
+    campus: Mapped["Campus"] = relationship(back_populates="grades")
 
 # ─────────────────────────────────────────
 # SUBJECTS
@@ -147,7 +137,7 @@ class User(Base):
 
     role: Mapped["Role"] = relationship(back_populates="users")
     teacher: Mapped["Teacher"] = relationship(back_populates="user", uselist=False)
-    student: Mapped["Student"] = relationship(back_populates="user", uselist=False)
+    student: Mapped["Student"] = relationship(back_populates="user", uselist=False, foreign_keys="Student.user_id")
 
 # ─────────────────────────────────────────
 # TEACHERS
@@ -190,8 +180,9 @@ class Student(Base):
     phone: Mapped[str] = mapped_column(String(30), nullable=True)
     email: Mapped[str] = mapped_column(String(180), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
+    guardian_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=True)
 
-    user: Mapped["User"] = relationship(back_populates="student")
+    user: Mapped["User"] = relationship(back_populates="student", foreign_keys=[user_id])
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="student")
 
 # ─────────────────────────────────────────
@@ -202,7 +193,7 @@ class Enrollment(Base):
 
     enrollment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("students.student_id"))
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.course_id"))
+    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
     period_id: Mapped[int] = mapped_column(ForeignKey("academic_periods.period_id"))
     enrollment_date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20), default="active")
@@ -218,7 +209,7 @@ class AcademicLoad(Base):
 
     academic_load_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     teacher_id: Mapped[int] = mapped_column(ForeignKey("teachers.teacher_id"))
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.course_id"))
+    grade_id: Mapped[int] = mapped_column(ForeignKey("grades.grade_id"))
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.subject_id"))
     period_id: Mapped[int] = mapped_column(ForeignKey("academic_periods.period_id"))
 
@@ -303,4 +294,4 @@ class Observador(Base):
     tipo: Mapped[str] = mapped_column(String(20))
     descripcion: Mapped[str] = mapped_column(Text)
     fecha: Mapped[datetime] = mapped_column(DateTime)
-    periodo: Mapped[str] = mapped_column(String(10))
+    periodo: Mapped[str] = mapped_column(String(50))

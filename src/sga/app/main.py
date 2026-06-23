@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from app.db.database import engine, Base
-from app.routers import auth, admin, docentes, estudiantes
+from app.routers import auth, admin, docentes, estudiantes, acudientes
 from sqlalchemy import text
 import os
 
@@ -11,7 +11,6 @@ import os
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.execute(text("ALTER TABLE academic_load DROP CONSTRAINT IF EXISTS uq_academic_load"))
     yield
     await engine.dispose()
 
@@ -20,6 +19,7 @@ api_app.include_router(auth.router)
 api_app.include_router(admin.router)
 api_app.include_router(docentes.router)
 api_app.include_router(estudiantes.router)
+api_app.include_router(acudientes.router)
 
 @api_app.exception_handler(Exception)
 async def api_exception_handler(request, exc):

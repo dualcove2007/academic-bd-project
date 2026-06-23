@@ -33,7 +33,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     role = role_result.scalar_one_or_none()
     role_name = role.name if role else "desconocido"
 
-    role_map = {"Administrativo": "admin", "Docente": "docente", "Estudiante": "estudiante"}
+    role_map = {"Administrativo": "admin", "Docente": "docente", "Estudiante": "estudiante", "Acudiente": "acudiente"}
     rol_sistema = role_map.get(role_name, "desconocido")
 
     token = create_access_token({"sub": str(user.user_id), "rol": rol_sistema})
