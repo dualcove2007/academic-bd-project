@@ -6,7 +6,7 @@
 -- -------------------------------------------------------------
 -- TABLA: campuses
 -- -------------------------------------------------------------
-CREATE TABLE academic.campuses (
+CREATE TABLE campuses (
     campus_id       INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     institution_id  INT             NOT NULL,
     name            VARCHAR(180)    NOT NULL,
@@ -17,18 +17,18 @@ CREATE TABLE academic.campuses (
     status          VARCHAR(20)     NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active', 'inactive')),
     CONSTRAINT fk_campus_institution
-        FOREIGN KEY (institution_id) REFERENCES academic.institutions (institution_id)
+        FOREIGN KEY (institution_id) REFERENCES institutions (institution_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 CREATE UNIQUE INDEX uq_main_campus
-ON academic.campuses (institution_id)
+ON campuses (institution_id)
 WHERE is_main = TRUE;
 
 
 -- -------------------------------------------------------------
 -- TABLA: classrooms
 -- -------------------------------------------------------------
-CREATE TABLE academic.classrooms (
+CREATE TABLE classrooms (
     classroom_id    INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     campus_id       INT             NOT NULL,
     name            VARCHAR(100)    NOT NULL,
@@ -37,6 +37,6 @@ CREATE TABLE academic.classrooms (
     status          VARCHAR(20)     NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active', 'inactive')),
     CONSTRAINT fk_classroom_campus
-        FOREIGN KEY (campus_id) REFERENCES academic.campuses (campus_id)
+        FOREIGN KEY (campus_id) REFERENCES campuses (campus_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );

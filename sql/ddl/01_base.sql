@@ -10,7 +10,7 @@
 -- -------------------------------------------------------------
 -- TABLA: institutions
 -- -------------------------------------------------------------
-CREATE TABLE academic.institutions (
+CREATE TABLE institutions (
     institution_id  INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name            VARCHAR(180)    NOT NULL,
     tax_id          VARCHAR(50)     UNIQUE,
@@ -31,7 +31,7 @@ CREATE TABLE academic.institutions (
 -- -------------------------------------------------------------
 -- TABLA: roles
 -- -------------------------------------------------------------
-CREATE TABLE academic.roles (
+CREATE TABLE roles (
     role_id     INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name        VARCHAR(100)    NOT NULL UNIQUE
 );
@@ -39,7 +39,7 @@ CREATE TABLE academic.roles (
 -- -------------------------------------------------------------
 -- TABLA: grades  (niveles educativos, p.ej. Kinder, 1°, 2°…)
 -- -------------------------------------------------------------
-CREATE TABLE academic.grades (
+CREATE TABLE grades (
     grade_id        INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name            VARCHAR(100)    NOT NULL,
     education_level VARCHAR(100)    NOT NULL
@@ -48,7 +48,7 @@ CREATE TABLE academic.grades (
 -- -------------------------------------------------------------
 -- TABLA: subjects  (materias/asignaturas de catálogo)
 -- -------------------------------------------------------------
-CREATE TABLE academic.subjects (
+CREATE TABLE subjects (
     subject_id      INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name            VARCHAR(180)    NOT NULL,
     description     TEXT,
@@ -60,7 +60,7 @@ CREATE TABLE academic.subjects (
 -- -------------------------------------------------------------
 -- TABLA: academic_periods
 -- -------------------------------------------------------------
-CREATE TABLE academic.academic_periods (
+CREATE TABLE academic_periods (
     period_id       INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name            VARCHAR(180)    NOT NULL,
     academic_year   INT             NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE academic.academic_periods (
 -- -------------------------------------------------------------
 -- TABLA: guardians
 -- -------------------------------------------------------------
-CREATE TABLE academic.guardians (
+CREATE TABLE guardians (
     guardian_id     INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     document_type   VARCHAR(30)     NOT NULL,
     document_number VARCHAR(50)     NOT NULL,

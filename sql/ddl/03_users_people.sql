@@ -12,7 +12,7 @@
 
 
 
-CREATE TABLE academic.users (
+CREATE TABLE users (
     user_id         INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_id         INT             NOT NULL,
     campus_id       INT             NOT NULL,
@@ -26,23 +26,22 @@ CREATE TABLE academic.users (
     last_name VARCHAR(100)  NOT NULL,
     second_last_name VARCHAR(100),
     phone VARCHAR(30),
-    email VARCHAR(180);
-
+    email VARCHAR(180),
     last_login      TIMESTAMP,
     status          VARCHAR(20)     NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active', 'inactive', 'suspended')),
     CONSTRAINT fk_user_role
-        FOREIGN KEY (role_id) REFERENCES academic.roles (role_id)
+        FOREIGN KEY (role_id) REFERENCES roles (role_id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_user_campus
-        FOREIGN KEY (campus_id) REFERENCES academic.campuses (campus_id)
+        FOREIGN KEY (campus_id) REFERENCES campuses (campus_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- -------------------------------------------------------------
 -- TABLA: teachers
 -- -------------------------------------------------------------
-CREATE TABLE academic.teachers (
+CREATE TABLE teachers (
     teacher_id          INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id             INT UNIQUE,
     document_type       VARCHAR(30)     NOT NULL,
@@ -58,14 +57,14 @@ CREATE TABLE academic.teachers (
                         CHECK (status IN ('active', 'inactive')),
     CONSTRAINT uq_teacher_doc UNIQUE (document_type, document_number),
     CONSTRAINT fk_teacher_user
-        FOREIGN KEY (user_id) REFERENCES academic.users (user_id)
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
         ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 -- -------------------------------------------------------------
 -- TABLA: students
 -- -------------------------------------------------------------
-CREATE TABLE academic.students (
+CREATE TABLE students (
     student_id          INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id             INT UNIQUE,
     document_type       VARCHAR(30)     NOT NULL,
@@ -82,14 +81,14 @@ CREATE TABLE academic.students (
                         CHECK (status IN ('active', 'inactive', 'graduated', 'suspended')),
     CONSTRAINT uq_student_doc UNIQUE (document_type, document_number),
     CONSTRAINT fk_student_user
-        FOREIGN KEY (user_id) REFERENCES academic.users (user_id)
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
         ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 -- -------------------------------------------------------------
 -- TABLA: student_guardian  (relación estudiante ↔ acudiente)
 -- -------------------------------------------------------------
-CREATE TABLE academic.student_guardian (
+CREATE TABLE student_guardian (
     student_id      INT             NOT NULL,
     guardian_id     INT             NOT NULL,
     relationship    VARCHAR(100)
@@ -97,33 +96,18 @@ CREATE TABLE academic.student_guardian (
     primary_contact BOOLEAN         NOT NULL DEFAULT FALSE,
     PRIMARY KEY (student_id, guardian_id),
     CONSTRAINT fk_sg_student
-        FOREIGN KEY (student_id) REFERENCES academic.students (student_id)
+        FOREIGN KEY (student_id) REFERENCES students (student_id)
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_sg_guardian
-        FOREIGN KEY (guardian_id) REFERENCES academic.guardians (guardian_id)
+        FOREIGN KEY (guardian_id) REFERENCES guardians (guardian_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- -------------------------------------------------------------
--- TABLA: password_reset_tokens
--- -------------------------------------------------------------
-CREATE TABLE academic.password_reset_tokens (
-    token_id    INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id     INT             NOT NULL,
-    token       VARCHAR(255)    NOT NULL UNIQUE,
-    expires_at  TIMESTAMP       NOT NULL,
-    used_at     TIMESTAMP,
-    created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
-    user_agent  VARCHAR(255),
-    CONSTRAINT fk_prt_user
-        FOREIGN KEY (user_id) REFERENCES academic.users (user_id)
-        ON UPDATE CASCADE ON DELETE CASCADE
-);
 
 -- -------------------------------------------------------------
 -- TABLA: user_sessions
 -- -------------------------------------------------------------
-CREATE TABLE academic.user_sessions (
+CREATE TABLE user_sessions (
     session_id      INT             GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id         INT             NOT NULL,
     token           VARCHAR(255)    NOT NULL UNIQUE,
@@ -133,6 +117,6 @@ CREATE TABLE academic.user_sessions (
     expires_at      TIMESTAMP       NOT NULL,
     closed_at       TIMESTAMP,
     CONSTRAINT fk_session_user
-        FOREIGN KEY (user_id) REFERENCES academic.users (user_id)
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
         ON UPDATE CASCADE ON DELETE CASCADE
 );
